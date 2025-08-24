@@ -2,11 +2,25 @@ package core
 
 import (
 	"context"
+	"fmt"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
+
+// MockNode is a mock implementation of the Node interface for testing.
+type MockNode struct {
+	ExecuteFunc func(ctx context.Context, inputs map[string]interface{}) (map[string]interface{}, error)
+}
+
+// Execute calls the mock ExecuteFunc.
+func (m *MockNode) Execute(ctx context.Context, inputs map[string]interface{}) (map[string]interface{}, error) {
+	if m.ExecuteFunc != nil {
+		return m.ExecuteFunc(ctx, inputs)
+	}
+	return nil, nil
+}
 
 func TestEngine_Execute_LinearWorkflow(t *testing.T) {
 	// 1. Setup
@@ -31,7 +45,6 @@ func TestEngine_Execute_LinearWorkflow(t *testing.T) {
 			"node-1": node1,
 			"node-2": node2,
 		},
-		// Edges are not used yet, but we'll define them for future use.
 		Edges: []Edge{
 			{From: "node-1", To: "node-2"},
 		},
@@ -46,4 +59,89 @@ func TestEngine_Execute_LinearWorkflow(t *testing.T) {
 	assert.Equal(t, "success", execution.NodeStates["node-1"].Status)
 	assert.Equal(t, "success", execution.NodeStates["node-2"].Status)
 	assert.Equal(t, "hello world", execution.NodeStates["node-2"].Output["node2_output"])
+}
+
+func TestEngine_Execute_FailingWorkflow(t *testing.T) {
+	// 1. Setup
+	engine := NewEngine()
+
+	node1 := &MockNode{
+		ExecuteFunc: func(ctx context.Context, inputs map[string]interface{}) (map[string]interface{}, error) {
+			return nil, fmt.Errorf("something went wrong")
+		},
+	}
+
+	workflow := &Workflow{
+		ID:   "wf-1",
+		Name: "Test Workflow",
+		Nodes: map[string]Node{
+			"node-1": node1,
+		},
+	}
+
+	// 2. Execute
+	execution, err := engine.Execute(context.Background(), workflow, nil)
+
+	// 3. Assert
+	require.Error(t, err)
+	assert.Equal(t, "failed", execution.Status)
+	assert.Equal(t, "failed", execution.NodeStates["node-1"].Status)
+	assert.Equal(t, "something went wrong", execution.NodeStates["node-1"].Error)
+}
+
+func TestTopologicalSort(t *testing.T) {
+	t.Run("simple linear workflow", func(t *testing.T) {
+		nodes := map[string]Node{
+			"node-1": &MockNode{},
+			"node-2": &MockNode{},
+			"node-3": &MockNode{},
+		}
+		edges := []Edge{
+			{From: "node-1", To: "node-2"},
+			{From: "node-2", To: "node-3"},
+		}
+
+		sorted, err := topologicalSort(nodes, edges)
+		require.NoError(t, err)
+		assert.Equal(t, []string{"node-1", "node-2", "node-3"}, sorted)
+	})
+
+	t.Run("workflow with a branch", func(t *testing.T) {
+		nodes := map[string]Node{
+			"node-1": &MockNode{},
+			"node-2": &MockNode{},
+			"node-3": &MockNode{},
+			"node-4": &MockNode{},
+		}
+		edges := []Edge{
+			{From: "node-1", To: "node-2"},
+			{From: "node-1", To: "node-3"},
+			{From: "node-2", To: "node-4"},
+			{From: "node-3", To: "node-4"},
+		}
+
+		sorted, err := topologicalSort(nodes, edges)
+		require.NoError(t, err)
+		// The exact order of node-2 and node-3 can vary, so we check for both possibilities.
+		assert.True(t, (sorted[1] == "node-2" && sorted[2] == "node-3") || (sorted[1] == "node-3" && sorted[2] == "node-2"))
+		assert.Equal(t, "node-1", sorted[0])
+		assert.Equal(t, "node-4", sorted[3])
+	})
+
+	t.Run("workflow with a cycle", func(t *testing.T) {
+		nodes := map[string]Node{
+			"node-1": &MockNode{},
+			"node-2": &MockNode{},
+			"node-3": &MockNode{},
+		}
+		edges := []Edge{
+			{From: "node-1", To: "node-2"},
+			{From: "node-2", To: "node-3"},
+			{From: "node-3", To: "node-1"},
+		}
+
+		_, err := topologicalSort(nodes, edges)
+		require.Error(t, err)
+		assert.Equal(t, "workflow has a cycle", err.Error())
+	})
 }
