@@ -55,14 +55,37 @@ func (e *Engine) Execute(ctx context.Context, workflow *Workflow, inputs map[str
 		NodeStates: make(map[string]NodeState),
 	}
 
-	// For now, we assume a simple linear execution of nodes based on the order they are defined.
-	// We will implement proper topological sorting and branching later.
-	for nodeID, node := range workflow.Nodes {
-		output, err := node.Execute(ctx, inputs)
+	sortedNodes, err := topologicalSort(workflow.Nodes, workflow.Edges)
+	if err != nil {
+		return nil, err
+	}
+
+	nodeOutputs := make(map[string]map[string]interface{})
+
+	for _, nodeID := range sortedNodes {
+		node := workflow.Nodes[nodeID]
+
+		// For now, we'll just merge the outputs of all parent nodes.
+		// A more sophisticated approach would be to allow the user to specify which outputs to use.
+		nodeInputs := make(map[string]interface{})
+		for k, v := range inputs { // start with the initial inputs
+			nodeInputs[k] = v
+		}
+		for _, edge := range workflow.Edges {
+			if edge.To == nodeID {
+				if parentOutput, ok := nodeOutputs[edge.From]; ok {
+					for k, v := range parentOutput {
+						nodeInputs[k] = v
+					}
+				}
+			}
+		}
+
+		output, err := node.Execute(ctx, nodeInputs)
 		if err != nil {
 			return nil, fmt.Errorf("error executing node %s: %w", nodeID, err)
 		}
-		inputs = output // Pass the output of the current node as input to the next.
+		nodeOutputs[nodeID] = output
 
 		execution.NodeStates[nodeID] = NodeState{
 			Status: "success",
