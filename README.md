@@ -138,8 +138,6 @@ Sire provides CLI commands to inspect the state of your workflow executions:
     ```bash
     ./sire --db-path sire.db execution status <execution-id>
     ```
-```
-
 ## High-Level Roadmap
 
 *   **v0.1 (Current):** MCP-first architecture, in-process tool server, remote tool execution, with initial dispatcher implementation.
