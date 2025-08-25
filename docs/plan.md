@@ -96,10 +96,10 @@ Modern development involves a multitude of tools and services, each with its own
 
 ### E6: Local Tools as an In-Process MCP Server
 
-*   [ ] T6.1 Implement an in-process MCP server and client  Owner: TBD  Est: 4h
-    *   [ ] S6.1.1 Create a singleton `InProcessServer` that can host MCP services without a network listener.
-    *   [ ] S6.1.2 Create a `sire:local` dispatcher that acts as a client to this in-process server.
-    *   [ ] S6.1.3 Add unit tests for the in-process client-server communication.
+*   [x] T6.1 Implement an in-process MCP server and client  Owner: Gemini  Est: 4h Completion Date: 2025-08-24
+    *   [x] S6.1.1 Create a singleton `InProcessServer` that can host MCP services without a network listener. Completion Date: 2025-08-24
+    *   [x] S6.1.2 Create a `sire:local` dispatcher that acts as a client to this in-process server. Completion Date: 2025-08-24
+    *   [x] S6.1.3 Add unit tests for the in-process client-server communication. Completion Date: 2025-08-24
 *   [ ] T6.2 Wrap existing nodes as in-process MCP tools  Owner: TBD  Est: 4h
     *   [ ] S6.2.1 Refactor `internal/nodes/file` to register its functions as services on the `InProcessServer`.
     *   [ ] S6.2.2 Refactor `internal/nodes/http` to register its functions as services.
