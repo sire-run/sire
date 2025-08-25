@@ -7,6 +7,7 @@ import (
 	"os"
 
 	"github.com/sire-run/sire/internal/core"
+	"github.com/sire-run/sire/internal/mcp/inprocess" // New import
 	"github.com/spf13/cobra"
 	"gopkg.in/yaml.v3"
 )
@@ -44,9 +45,9 @@ var runCmd = &cobra.Command{
 		}
 
 		// 4. Execute workflow
-		// For now, create a dummy registry and engine.
-		// Later, we'll have a proper way to register built-in nodes.
-		engine := core.NewEngine()
+		// Instantiate the in-process dispatcher
+		dispatcher := inprocess.NewInProcessDispatcher()
+		engine := core.NewEngine(dispatcher)
 
 		execution, err := engine.Execute(context.Background(), &workflow, inputs)
 		if err != nil {

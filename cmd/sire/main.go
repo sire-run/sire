@@ -4,10 +4,6 @@ import (
 	"fmt"
 	"os"
 
-	_ "github.com/sire-run/sire/internal/nodes/file"
-	_ "github.com/sire-run/sire/internal/nodes/http"
-	_ "github.com/sire-run/sire/internal/nodes/transform"
-
 	"github.com/spf13/cobra"
 )
 
