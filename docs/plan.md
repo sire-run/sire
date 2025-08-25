@@ -28,7 +28,7 @@ Modern development involves a multitude of tools and services, each with its own
 **Constraints:**
 
 *   The core orchestrator must remain in Go for performance.
-*   The orchestrator requires a persistence layer to store execution state. For simplicity, the initial implementation will use an embedded database.
+*   *   The orchestrator requires a persistence layer to store execution state. For simplicity, the initial implementation will use an embedded database (`bbolt`, a actively maintained fork of BoltDB).
 *   All communication with tools must happen over the JSON-RPC 2.0-based MCP specification.
 
 **Assumptions:**
@@ -127,8 +127,7 @@ Modern development involves a multitude of tools and services, each with its own
 
 ### E9: Durable Execution and State Persistence
 
-*   [x] T9.1 Integrate a persistence layer  Owner: Gemini  Est: 4h Completion Date: 2025-08-24
-    *   [x] S9.1.1 Research and select a Go-native embedded database (e.g., BoltDB, BadgerDB). Decision criteria: simplicity, transactional support, performance. Tentatively select BoltDB. Completion Date: 2025-08-24
+                *   [x] S9.1.1 Research and select a Go-native embedded database (e.g., `bbolt`, BadgerDB). Decision criteria: simplicity, transactional support, performance. Tentatively select `bbolt`. Completion Date: 2025-08-24
     *   [x] S9.1.2 Implement a `storage` service that abstracts all database operations (e.g., `SaveExecution`, `LoadExecution`, `ListPending`). Completion Date: 2025-08-24
     *   [x] S9.1.3 Add comprehensive unit tests for the storage service, mocking the database interface. Completion Date: 2025-08-24
 *   [x] T9.2 Refactor the engine for stateful execution  Owner: Gemini  Est: 6h Completion Date: 2025-08-24
@@ -151,7 +150,14 @@ Modern development involves a multitude of tools and services, each with its own
 
 ### E10: Performance and Scalability Enhancements
 
-*   [ ] **T10.1: Implement Concurrent and Parallel Execution:** Enhance the engine to execute independent workflow branches concurrently.
+*   [ ] T10.1: Implement Concurrent and Parallel Execution  Owner: TBD  Est: 8h
+    *   Dependencies: T5.2, T9.2
+    *   Acceptance Criteria: The engine can execute multiple independent branches of a workflow concurrently, significantly reducing overall workflow execution time for parallelizable tasks.
+    *   Risk Notes: Potential for race conditions if state management is not handled carefully.
+    *   [x] S10.1.1: Identify independent workflow branches using a dependency graph analysis. Completion Date: 2025-08-25
+    *   [ ] S10.1.2: Modify the engine's dispatcher to launch concurrent goroutines for independent steps.
+    *   [ ] S10.1.3: Ensure concurrent execution respects resource limits and avoids deadlocks.
+    *   [ ] S10.1.4: Add unit and integration tests to verify correct concurrent execution and state updates.
 *   [ ] **T10.2: Implement Granular State Persistence & Large Data Handling:**
     *   [ ] S10.2.1: Refactor state updates to be atomic and granular, rather than saving the entire execution object.
     *   [ ] S10.2.2: Design and implement an `ArtifactStore` for handling large data blobs outside the primary database.
@@ -199,6 +205,9 @@ Modern development involves a multitude of tools and services, each with its own
 
 ## 6. Progress Log
 
+*   **2025-08-25 (Change Summary):** Updated `docs/design.md` to reflect the decision to use `bbolt` as the default embedded database and to emphasize the swappable nature of the persistence layer (Store interface). This clarifies the architectural approach for database integration.
+*   **2025-08-25 (Change Summary):** Completed S10.1.1: Identified independent workflow branches using a dependency graph analysis. This involved implementing `GetExecutableSteps` and resolving related YAML unmarshaling and linter issues.
+*   **2025-08-25 (Change Summary):** Added new task T10.1 "Implement Concurrent and Parallel Execution" under Epic E10 to continue work on Performance and Scalability Enhancements.
 *   **2025-08-24 (Change Summary):** Aligned the project plan with the updated design document. This introduces a detailed future roadmap of epics (E10-E14) covering scalability, high availability, advanced developer experience, security, and observability. The Non-Goals and Out of Scope sections were clarified to reflect that features like HA and advanced auth are part of this long-term vision.
 *   **2025-08-24 (Change Summary):** Enhanced the plan to include durable execution. This is a major feature that introduces a persistence layer (E9) to ensure workflows can survive orchestrator restarts and transient tool failures. This change makes Sire a more reliable and robust platform. The plan was updated to include tasks for database integration, stateful engine logic, and retry mechanisms. The timeline and deliverables were also adjusted accordingly (D11, M7).
 *   **2025-08-24 (Change Summary):** Pivoted the project plan to focus on making Sire a universal MCP orchestration engine. This is a major strategic shift from the original plan of being a Go-based n8n alternative. The new plan archives the completed initial work (E1-E4) and introduces new epics (E5-E8) to refactor the core engine, unify local and remote tool execution via MCP, and update all documentation to reflect the new vision. This change was prompted by the realization that a decoupled, MCP-first architecture is more powerful and extensible.
