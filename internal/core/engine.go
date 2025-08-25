@@ -5,46 +5,14 @@ import (
 	"fmt"
 )
 
-// Workflow is the top-level structure for a workflow definition.
-type Workflow struct {
-	ID    string
-	Name  string
-	Nodes map[string]Node
-	Edges []Edge
-}
-
-// Node is the interface that all nodes must implement.
-type Node interface {
-	Execute(ctx context.Context, inputs map[string]interface{}) (map[string]interface{}, error)
-}
-
-// Edge represents a connection between two nodes in a workflow.
-type Edge struct {
-	From string
-	To   string
-}
-
-// Execution represents a single run of a workflow.
-type Execution struct {
-	ID         string
-	WorkflowID string
-	Status     string
-	NodeStates map[string]NodeState
-}
-
-// NodeState represents the state of a single node in an execution.
-type NodeState struct {
-	Status string
-	Output map[string]interface{}
-	Error  string
-}
-
 // Engine is responsible for executing workflows.
-type Engine struct{}
+type Engine struct {
+	registry *NodeRegistry
+}
 
 // NewEngine creates a new execution engine.
-func NewEngine() *Engine {
-	return &Engine{}
+func NewEngine(registry *NodeRegistry) *Engine {
+	return &Engine{registry: registry}
 }
 
 // Execute executes a workflow.
@@ -55,7 +23,21 @@ func (e *Engine) Execute(ctx context.Context, workflow *Workflow, inputs map[str
 		NodeStates: make(map[string]NodeState),
 	}
 
-	sortedNodes, err := topologicalSort(workflow.Nodes, workflow.Edges)
+	// 1. Instantiate all nodes from the definitions
+	nodes := make(map[string]Node)
+	for id, definition := range workflow.Nodes {
+		constructor, err := e.registry.GetNodeConstructor(definition.Type)
+		if err != nil {
+			return nil, fmt.Errorf("error getting constructor for node %s of type %s: %w", id, definition.Type, err)
+		}
+		node, err := constructor(definition.Config)
+		if err != nil {
+			return nil, fmt.Errorf("error instantiating node %s: %w", id, err)
+		}
+		nodes[id] = node
+	}
+
+	sortedNodes, err := topologicalSort(nodes, workflow.Edges)
 	if err != nil {
 		return nil, err
 	}
@@ -63,7 +45,7 @@ func (e *Engine) Execute(ctx context.Context, workflow *Workflow, inputs map[str
 	nodeOutputs := make(map[string]map[string]interface{})
 
 	for _, nodeID := range sortedNodes {
-		node := workflow.Nodes[nodeID]
+		node := nodes[nodeID]
 
 		// For now, we'll just merge the outputs of all parent nodes.
 		// A more sophisticated approach would be to allow the user to specify which outputs to use.
