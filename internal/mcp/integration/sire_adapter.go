@@ -1,7 +1,5 @@
 package integration
 
-import ()
-
 // SireAdapter provides access to the Sire core.
 type SireAdapter struct{}
 

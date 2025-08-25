@@ -47,7 +47,8 @@ func (s *MCPService) Shutdown(r *http.Request, args *struct{}, reply *struct{}) 
 func (s *MCPService) ToolExecute(r *http.Request, args *struct {
 	Name   string
 	Params []map[string]interface{}
-}, reply *interface{}) error {
+}, reply *interface{},
+) error {
 	switch args.Name {
 	case "sire/listTools": // Changed from listNodes
 		*reply = s.toolProvider.ListTools()

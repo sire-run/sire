@@ -29,7 +29,7 @@ type BoltDBStore struct {
 
 // NewBoltDBStore creates a new BoltDBStore.
 func NewBoltDBStore(dbPath string) (*BoltDBStore, error) {
-	db, err := bolt.Open(dbPath, 0600, nil)
+	db, err := bolt.Open(dbPath, 0o600, nil)
 	if err != nil {
 		return nil, fmt.Errorf("failed to open BoltDB: %w", err)
 	}

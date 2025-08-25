@@ -148,9 +148,6 @@ Modern development involves a multitude of tools and services, each with its own
     *   [x] S9.4.2 Update documentation to explain the durability guarantees and how to configure retry policies. Completion Date: 2025-08-24
 *   [x] T9.5 Run linter and formatter  Owner: Gemini  Est: 30m Completion Date: 2025-08-24
 
-### Future Roadmap: Post-Launch Epics
-
-The following epics represent the next phase of development after the core MCP pivot and durability features are complete. They are based on the opportunities identified in `docs/design.md`.
 
 ### E10: Performance and Scalability Enhancements
 
@@ -167,10 +164,9 @@ The following epics represent the next phase of development after the core MCP p
 
 ### E12: Advanced Developer Experience
 
-*   [ ] **T12.1: Develop Workflow SDKs:** Create SDKs (e.g., in Go or Python) for defining workflows programmatically.
-*   [ ] **T12.2: Implement Interactive CLI Debugger:** Add a `--debug` mode to the CLI for stepping through workflows.
+*   [ ] **T12.1: Implement Interactive CLI Debugger:** Add a `--debug` mode to the CLI for stepping through workflows.
 
-*   [ ] **T12.3: Add Mocking and Dry-Run Capabilities:** Implement `--dry-run` and `--mock-file` flags.
+*   [ ] **T12.2: Add Mocking and Dry-Run Capabilities:** Implement `--dry-run` and `--mock-file` flags.
 
 ### E13: Comprehensive Security Model
 

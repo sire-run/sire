@@ -8,8 +8,7 @@ import (
 )
 
 // ToolProvider provides the implementation for the MCP tools.
-type ToolProvider struct {
-}
+type ToolProvider struct{}
 
 // NewToolProvider creates a new ToolProvider.
 func NewToolProvider() *ToolProvider {
