@@ -7,11 +7,12 @@ import (
 	"net/http/httptest"
 	"testing"
 
+	"github.com/sire-run/sire/internal/mcp/inprocess" // Import the inprocess package
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
-func TestHTTPRequestNode_Execute(t *testing.T) {
+func TestHTTPRequest_Execute(t *testing.T) {
 	t.Run("simple GET request", func(t *testing.T) {
 		server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			assert.Equal(t, "GET", r.Method)
@@ -22,7 +23,9 @@ func TestHTTPRequestNode_Execute(t *testing.T) {
 		}))
 		defer server.Close()
 
-		config := map[string]interface{}{
+		dispatcher := inprocess.NewInProcessDispatcher()
+
+		params := map[string]interface{}{
 			"method": "GET",
 			"url":    server.URL,
 			"headers": map[string]interface{}{
@@ -30,10 +33,7 @@ func TestHTTPRequestNode_Execute(t *testing.T) {
 			},
 		}
 
-		node, err := NewHTTPRequestNode(config)
-		require.NoError(t, err)
-
-		output, err := node.Execute(context.Background(), nil)
+		output, err := dispatcher.Dispatch(context.Background(), "sire:local/http.request", params)
 		require.NoError(t, err)
 
 		assert.Equal(t, 200, output["statusCode"])
@@ -51,16 +51,15 @@ func TestHTTPRequestNode_Execute(t *testing.T) {
 		}))
 		defer server.Close()
 
-		config := map[string]interface{}{
+		dispatcher := inprocess.NewInProcessDispatcher()
+
+		params := map[string]interface{}{
 			"method": "POST",
 			"url":    server.URL,
 			"body":   `{"key": "value"}`,
 		}
 
-		node, err := NewHTTPRequestNode(config)
-		require.NoError(t, err)
-
-		output, err := node.Execute(context.Background(), nil)
+		output, err := dispatcher.Dispatch(context.Background(), "sire:local/http.request", params)
 		require.NoError(t, err)
 
 		assert.Equal(t, 201, output["statusCode"])

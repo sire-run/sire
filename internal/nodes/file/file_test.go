@@ -5,11 +5,12 @@ import (
 	"os"
 	"testing"
 
+	"github.com/sire-run/sire/internal/mcp/inprocess" // Import the inprocess package
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
-func TestFileReadNode(t *testing.T) {
+func TestFileRead(t *testing.T) {
 	// Create a temporary file with content
 	tmpfile, err := os.CreateTemp("", "test-read-*.txt")
 	require.NoError(t, err)
@@ -20,38 +21,33 @@ func TestFileReadNode(t *testing.T) {
 	require.NoError(t, err)
 	require.NoError(t, tmpfile.Close())
 
-	config := map[string]interface{}{
+	dispatcher := inprocess.NewInProcessDispatcher()
+
+	params := map[string]interface{}{
 		"path": tmpfile.Name(),
 	}
 
-	node, err := NewFileReadNode(config)
-	require.NoError(t, err)
-
-	output, err := node.Execute(context.Background(), nil)
+	output, err := dispatcher.Dispatch(context.Background(), "sire:local/file.read", params)
 	require.NoError(t, err)
 
 	assert.Equal(t, content, output["content"])
 }
 
-func TestFileWriteNode(t *testing.T) {
+func TestFileWrite(t *testing.T) {
 	// Create a temporary file path
 	tmpfile, err := os.CreateTemp("", "test-write-*.txt")
 	require.NoError(t, err)
 	require.NoError(t, tmpfile.Close()) // close it, we just need the name
 	defer func() { assert.NoError(t, os.Remove(tmpfile.Name())) }()
 
-	config := map[string]interface{}{
-		"path": tmpfile.Name(),
-	}
+	dispatcher := inprocess.NewInProcessDispatcher()
 
-	node, err := NewFileWriteNode(config)
-	require.NoError(t, err)
-
-	inputs := map[string]interface{}{
+	params := map[string]interface{}{
+		"path":    tmpfile.Name(),
 		"content": "hello from test",
 	}
 
-	_, err = node.Execute(context.Background(), inputs)
+	_, err = dispatcher.Dispatch(context.Background(), "sire:local/file.write", params)
 	require.NoError(t, err)
 
 	// Verify content

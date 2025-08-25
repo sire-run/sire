@@ -8,61 +8,38 @@ import (
 	"net/http"
 	"strings"
 
-	"github.com/sire-run/sire/internal/core"
+	"github.com/sire-run/sire/internal/mcp/inprocess" // Import the inprocess package
 )
 
-// HTTPRequestNode is a node that makes an HTTP request.
-type HTTPRequestNode struct {
-	method  string
-	url     string
-	headers map[string]string
-	body    string
-}
+// Request makes an HTTP request.
+func Request(ctx context.Context, params map[string]interface{}) (map[string]interface{}, error) {
+	method, ok := params["method"].(string)
+	if !ok {
+		return nil, fmt.Errorf("parameter 'method' is required and must be a string")
+	}
+	method = strings.ToUpper(method)
 
-// NewHTTPRequestNode creates a new HTTPRequestNode.
-func NewHTTPRequestNode(config map[string]interface{}) (core.Node, error) {
-	node := &HTTPRequestNode{}
-
-	if method, ok := config["method"].(string); ok {
-		node.method = strings.ToUpper(method)
-	} else {
-		return nil, fmt.Errorf("config 'method' is required and must be a string")
+	urlStr, ok := params["url"].(string)
+	if !ok {
+		return nil, fmt.Errorf("parameter 'url' is required and must be a string")
 	}
 
-	if url, ok := config["url"].(string); ok {
-		node.url = url
-	} else {
-		return nil, fmt.Errorf("config 'url' is required and must be a string")
+	var bodyReader io.Reader
+	if body, ok := params["body"].(string); ok {
+		bodyReader = bytes.NewBufferString(body)
 	}
 
-	if headers, ok := config["headers"].(map[string]interface{}); ok {
-		node.headers = make(map[string]string)
-		for k, v := range headers {
-			if val, ok := v.(string); ok {
-				node.headers[k] = val
-			}
-		}
-	}
-
-	if body, ok := config["body"].(string); ok {
-		node.body = body
-	}
-
-	return node, nil
-}
-
-// Execute makes the HTTP request.
-func (n *HTTPRequestNode) Execute(ctx context.Context, inputs map[string]interface{}) (map[string]interface{}, error) {
-	// Here we could override config with inputs, e.g. for dynamic URLs.
-	// For now, we'll just use the config.
-
-	req, err := http.NewRequestWithContext(ctx, n.method, n.url, bytes.NewBufferString(n.body))
+	req, err := http.NewRequestWithContext(ctx, method, urlStr, bodyReader)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create request: %w", err)
 	}
 
-	for k, v := range n.headers {
-		req.Header.Set(k, v)
+	if headers, ok := params["headers"].(map[string]interface{}); ok {
+		for k, v := range headers {
+			if val, ok := v.(string); ok {
+				req.Header.Set(k, val)
+			}
+		}
 	}
 
 	client := &http.Client{}
@@ -86,7 +63,10 @@ func (n *HTTPRequestNode) Execute(ctx context.Context, inputs map[string]interfa
 	return output, nil
 }
 
-// init registers the node with the core registry.
 func init() {
-	core.RegisterNode("http.request", NewHTTPRequestNode)
+	server := inprocess.GetInProcessServer()
+	err := server.RegisterServiceMethod("sire:local/http.request", Request)
+	if err != nil {
+		panic(err) // Panics if registration fails
+	}
 }

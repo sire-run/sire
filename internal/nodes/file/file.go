@@ -5,63 +5,50 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/sire-run/sire/internal/core"
+	"github.com/sire-run/sire/internal/mcp/inprocess" // Import the inprocess package
 )
 
-// FileReadNode reads a file.
-type FileReadNode struct {
-	path string
-}
-
-// NewFileReadNode creates a new FileReadNode.
-func NewFileReadNode(config map[string]interface{}) (core.Node, error) {
-	path, ok := config["path"].(string)
+// ReadFile reads a file from the given path.
+func ReadFile(ctx context.Context, params map[string]interface{}) (map[string]interface{}, error) {
+	path, ok := params["path"].(string)
 	if !ok {
-		return nil, fmt.Errorf("config 'path' is required and must be a string")
+		return nil, fmt.Errorf("parameter 'path' is required and must be a string")
 	}
-	return &FileReadNode{path: path}, nil
-}
 
-// Execute reads the file content.
-func (n *FileReadNode) Execute(ctx context.Context, inputs map[string]interface{}) (map[string]interface{}, error) {
-	// Here we could allow overriding path from inputs.
-	data, err := os.ReadFile(n.path)
+	data, err := os.ReadFile(path)
 	if err != nil {
-		return nil, fmt.Errorf("failed to read file %s: %w", n.path, err)
+		return nil, fmt.Errorf("failed to read file %s: %w", path, err)
 	}
 	return map[string]interface{}{"content": string(data)}, nil
 }
 
-// FileWriteNode writes to a file.
-type FileWriteNode struct {
-	path string
-}
-
-// NewFileWriteNode creates a new FileWriteNode.
-func NewFileWriteNode(config map[string]interface{}) (core.Node, error) {
-	path, ok := config["path"].(string)
+// WriteFile writes content to a file at the given path.
+func WriteFile(ctx context.Context, params map[string]interface{}) (map[string]interface{}, error) {
+	path, ok := params["path"].(string)
 	if !ok {
-		return nil, fmt.Errorf("config 'path' is required and must be a string")
+		return nil, fmt.Errorf("parameter 'path' is required and must be a string")
 	}
-	return &FileWriteNode{path: path}, nil
-}
-
-// Execute writes the content to a file.
-func (n *FileWriteNode) Execute(ctx context.Context, inputs map[string]interface{}) (map[string]interface{}, error) {
-	content, ok := inputs["content"].(string)
+	content, ok := params["content"].(string)
 	if !ok {
-		return nil, fmt.Errorf("input 'content' is required and must be a string")
+		return nil, fmt.Errorf("parameter 'content' is required and must be a string")
 	}
 
-	err := os.WriteFile(n.path, []byte(content), 0644)
+	err := os.WriteFile(path, []byte(content), 0644)
 	if err != nil {
-		return nil, fmt.Errorf("failed to write to file %s: %w", n.path, err)
+		return nil, fmt.Errorf("failed to write to file %s: %w", path, err)
 	}
 
 	return nil, nil // No output
 }
 
 func init() {
-	core.RegisterNode("file.read", NewFileReadNode)
-	core.RegisterNode("file.write", NewFileWriteNode)
+	server := inprocess.GetInProcessServer()
+	err := server.RegisterServiceMethod("sire:local/file.read", ReadFile)
+	if err != nil {
+		panic(err) // Panics if registration fails, which should not happen in a well-formed app
+	}
+	err = server.RegisterServiceMethod("sire:local/file.write", WriteFile)
+	if err != nil {
+		panic(err) // Panics if registration fails
+	}
 }
