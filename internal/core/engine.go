@@ -10,8 +10,13 @@ type Engine struct {
 	registry *NodeRegistry
 }
 
-// NewEngine creates a new execution engine.
-func NewEngine(registry *NodeRegistry) *Engine {
+// NewEngine creates a new execution engine using the global registry.
+func NewEngine() *Engine {
+	return &Engine{registry: globalRegistry}
+}
+
+// NewEngineWithRegistry creates a new execution engine with a specific registry for testing.
+func NewEngineWithRegistry(registry *NodeRegistry) *Engine {
 	return &Engine{registry: registry}
 }
 

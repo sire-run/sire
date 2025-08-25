@@ -46,8 +46,7 @@ var runCmd = &cobra.Command{
 		// 4. Execute workflow
 		// For now, create a dummy registry and engine.
 		// Later, we'll have a proper way to register built-in nodes.
-		registry := core.NewNodeRegistry()
-		engine := core.NewEngine(registry)
+		engine := core.NewEngine()
 
 		execution, err := engine.Execute(context.Background(), &workflow, inputs)
 		if err != nil {

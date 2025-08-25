@@ -33,3 +33,15 @@ func (r *NodeRegistry) GetNodeConstructor(typeName string) (NodeConstructor, err
 	}
 	return constructor, nil
 }
+
+var globalRegistry = NewNodeRegistry()
+
+// RegisterNode registers a new node type in the global registry.
+func RegisterNode(typeName string, constructor NodeConstructor) {
+	globalRegistry.Register(typeName, constructor)
+}
+
+// GetNodeConstructor retrieves a node constructor from the global registry.
+func GetNodeConstructor(typeName string) (NodeConstructor, error) {
+	return globalRegistry.GetNodeConstructor(typeName)
+}

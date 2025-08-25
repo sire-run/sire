@@ -40,7 +40,7 @@ func TestEngine_Execute_LinearWorkflow(t *testing.T) {
 		}, nil
 	})
 
-	engine := NewEngine(registry)
+	engine := NewEngineWithRegistry(registry)
 
 	workflow := &Workflow{
 		ID:   "wf-1",
@@ -76,7 +76,7 @@ func TestEngine_Execute_FailingWorkflow(t *testing.T) {
 		}, nil
 	})
 
-	engine := NewEngine(registry)
+	engine := NewEngineWithRegistry(registry)
 
 	workflow := &Workflow{
 		ID:   "wf-1",
@@ -187,7 +187,7 @@ func TestEngine_Execute_BranchingWorkflow(t *testing.T) {
 		}, nil
 	})
 
-	engine := NewEngine(registry)
+	engine := NewEngineWithRegistry(registry)
 
 	workflow := &Workflow{
 		ID:   "wf-branching",
