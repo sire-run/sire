@@ -140,7 +140,7 @@ Modern development involves a multitude of tools and services, each with its own
 *   [ ] T9.3 Implement retry and resumption logic  Owner: TBD  Est: 5h
     *   [x] S9.3.1 When a tool call fails with a transient error, the engine marks the step as `retrying` in the database. Completion Date: 2025-08-24
     *   [x] S9.3.2 Implement a background worker process that periodically scans the database for pending or retrying executions. Completion Date: 2025-08-24
-    *   [ ] S9.3.3 The background worker re-queues these executions for the engine to process.
+    *   [x] S9.3.3 The background worker re-queues these executions for the engine to process. Completion Date: 2025-08-24
     *   [ ] S9.3.4 Implement a configurable exponential backoff policy for retries within the workflow step definition.
     *   [ ] S9.3.5 Add unit tests for the retry logic.
 *   [ ] T9.4 Update CLI and documentation  Owner: TBD  Est: 2h

@@ -65,6 +65,7 @@ var runCmd = &cobra.Command{
 		execution := &core.Execution{
 			ID:         executionID,
 			WorkflowID: workflow.ID,
+			Workflow:   &workflow, // Store the workflow definition
 			Status:     core.ExecutionStatusRunning,
 			StepStates: make(map[string]*core.StepState),
 			CreatedAt:  time.Now(),

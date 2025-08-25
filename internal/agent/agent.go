@@ -72,19 +72,8 @@ func (a *Agent) scanAndResume(ctx context.Context) {
 
 		log.Printf("Agent: Resuming execution %s (Workflow: %s)", exec.ID, exec.WorkflowID)
 
-		// Load the full workflow definition (assuming it's available from some source)
-		// For now, we'll assume the workflow definition is passed to the engine's Execute method.
-		// In a real scenario, the agent might need to load the workflow from a workflow store.
-		// For this test, we'll need to pass a dummy workflow.
-		// This will be addressed in S9.3.3.
-
-		// Execute the workflow. The engine will handle resumption from the last state.
-		// We need to pass the original workflow definition here.
-		// This is a placeholder for now.
-		dummyWorkflow := &core.Workflow{
-			ID: exec.WorkflowID,
-			// Populate other fields as needed for the engine to execute
-		}
+		// Use the workflow definition stored in the execution object
+		wf := exec.Workflow
 
 		// Use a background context for the execution, so the agent can continue scanning
 		go func(e *core.Execution, wf *core.Workflow) {
@@ -94,6 +83,6 @@ func (a *Agent) scanAndResume(ctx context.Context) {
 			} else {
 				log.Printf("Agent: Execution %s completed successfully.", e.ID)
 			}
-		}(exec, dummyWorkflow)
+		}(exec, wf)
 	}
 }
