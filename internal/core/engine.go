@@ -5,22 +5,34 @@ import (
 	"fmt"
 )
 
+// Store defines the interface for storing and retrieving workflow executions.
+// This is a copy from internal/storage/storage.go to avoid circular dependency.
+// In a real project, this would be in a shared package or passed as an interface.
+type Store interface {
+	SaveExecution(execution *Execution) error
+	LoadExecution(id string) (*Execution, error)
+	ListPendingExecutions() ([]*Execution, error)
+	// Add other necessary methods like DeleteExecution, etc.
+}
+
 // Engine is responsible for executing workflows.
 type Engine struct {
 	dispatcher Dispatcher
+	store      Store // New field for storage
 }
 
 // NewEngine creates a new execution engine.
-func NewEngine(dispatcher Dispatcher) *Engine {
-	return &Engine{dispatcher: dispatcher}
+func NewEngine(dispatcher Dispatcher, store Store) *Engine {
+	return &Engine{dispatcher: dispatcher, store: store}
 }
 
 // Execute executes a workflow.
-func (e *Engine) Execute(ctx context.Context, workflow *Workflow, inputs map[string]interface{}) (*Execution, error) {
-	execution := &Execution{
-		WorkflowID: workflow.ID,
-		Status:     ExecutionStatusRunning, // Use the new enum
-		StepStates: make(map[string]*StepState), // Initialize with pointers
+// It now takes an existing execution object.
+func (e *Engine) Execute(ctx context.Context, execution *Execution, workflow *Workflow, inputs map[string]interface{}) (*Execution, error) {
+	// No longer creating a new execution here, it's passed in.
+	// Ensure initial status is running if it's a new execution or resuming
+	if execution.Status == "" { // Or some other initial state check
+		execution.Status = ExecutionStatusRunning
 	}
 
 	steps := make(map[string]Step)
@@ -30,13 +42,28 @@ func (e *Engine) Execute(ctx context.Context, workflow *Workflow, inputs map[str
 
 	sortedSteps, err := topologicalSort(steps, workflow.Edges)
 	if err != nil {
-		return nil, err
+		execution.Status = ExecutionStatusFailed // Mark as failed if topological sort fails
+		if e.store != nil {
+			_ = e.store.SaveExecution(execution) // Attempt to save state
+		}
+		return execution, fmt.Errorf("workflow topological sort failed: %w", err)
 	}
 
+	// Load stepOutputs from execution.StepStates if resuming
 	stepOutputs := make(map[string]map[string]interface{})
+	for stepID, stepState := range execution.StepStates {
+		if stepState.Status == StepStatusCompleted {
+			stepOutputs[stepID] = stepState.Output
+		}
+	}
 
 	for _, stepID := range sortedSteps {
 		step := steps[stepID]
+
+		// If step is already completed, skip it
+		if ss, ok := execution.StepStates[stepID]; ok && ss.Status == StepStatusCompleted {
+			continue
+		}
 
 		stepInputs := make(map[string]interface{})
 		// Start with the initial inputs to the workflow
@@ -65,6 +92,9 @@ func (e *Engine) Execute(ctx context.Context, workflow *Workflow, inputs map[str
 				Status: StepStatusFailed, // Use the new enum
 				Error:  err.Error(),
 			}
+			if e.store != nil {
+				_ = e.store.SaveExecution(execution) // Attempt to save state
+			}
 			return execution, fmt.Errorf("error executing step %s: %w", stepID, err)
 		}
 		stepOutputs[stepID] = output
@@ -73,9 +103,18 @@ func (e *Engine) Execute(ctx context.Context, workflow *Workflow, inputs map[str
 			Status: StepStatusCompleted, // Use the new enum
 			Output: output,
 		}
+		// Save state after each step (S9.2.3)
+		if e.store != nil {
+			if err := e.store.SaveExecution(execution); err != nil {
+				return execution, fmt.Errorf("failed to save execution state after step %s: %w", stepID, err)
+			}
+		}
 	}
 
 	execution.Status = ExecutionStatusCompleted // Use the new enum
+	if e.store != nil {
+		_ = e.store.SaveExecution(execution) // Final save
+	}
 
 	return execution, nil
 }

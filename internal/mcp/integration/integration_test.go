@@ -6,11 +6,14 @@ import (
 	"fmt"
 	"net/http"
 	"net/http/httptest"
+	"os" // New import for os.CreateTemp
 	"testing"
+	"time" // New import for time.Now()
 
 	"github.com/sire-run/sire/internal/core"
 	"github.com/sire-run/sire/internal/mcp/inprocess" // Import inprocess dispatcher
-	"github.com/sire-run/sire/internal/mcp/remote"    // Import remote dispatcher types
+	"github.com/sire-run/sire/internal/mcp/remote"   // Import remote dispatcher types
+	"github.com/sire-run/sire/internal/storage"      // New import for storage
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -18,6 +21,19 @@ import (
 // MockMCPService represents a mock MCP service that can handle RPC calls.
 type MockMCPService struct {
 	methods map[string]func(params map[string]interface{}) (interface{}, error)
+}
+
+// MockDispatcher is a mock implementation of the Dispatcher interface for testing.
+type MockDispatcher struct {
+	DispatchFunc func(ctx context.Context, tool string, params map[string]interface{}) (map[string]interface{}, error)
+}
+
+// Dispatch calls the mock DispatchFunc.
+func (m *MockDispatcher) Dispatch(ctx context.Context, tool string, params map[string]interface{}) (map[string]interface{}, error) {
+	if m.DispatchFunc != nil {
+		return m.DispatchFunc(ctx, tool, params)
+	}
+	return nil, nil
 }
 
 // NewMockMCPService creates a new MockMCPService.
@@ -57,8 +73,6 @@ func (s *MockMCPService) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 			http.Error(w, "Bad Request: params must be an object", http.StatusBadRequest)
 			return
 		}
-	} else {
-		callParams = make(map[string]interface{}) // Empty map if params is nil
 	}
 
 	handler, ok := s.methods[req.Method]
@@ -130,7 +144,7 @@ func TestEngine_RemoteToolExecution(t *testing.T) {
 	dispatcherMux.Register("sire", inprocess.NewInProcessDispatcher())
 	dispatcherMux.Register("mcp", remote.NewRemoteDispatcher())
 
-	engine := core.NewEngine(dispatcherMux)
+	engine := core.NewEngine(dispatcherMux, nil) // Pass nil for store for now
 
 	// Define a workflow that calls the remote math.add tool
 	workflow := &core.Workflow{
@@ -149,11 +163,18 @@ func TestEngine_RemoteToolExecution(t *testing.T) {
 		Edges: []core.Edge{},
 	}
 
-	execution, err := engine.Execute(context.Background(), workflow, nil)
+	execution := &core.Execution{
+		ID:         "exec-remote-1",
+		WorkflowID: workflow.ID,
+		Status:     core.ExecutionStatusRunning,
+		StepStates: make(map[string]*core.StepState),
+	}
+
+	execResult, err := engine.Execute(context.Background(), execution, workflow, nil)
 	require.NoError(t, err)
-	assert.Equal(t, "success", execution.Status)
-	assert.Equal(t, "success", execution.StepStates["add_numbers"].Status)
-	assert.Equal(t, float64(30), execution.StepStates["add_numbers"].Output["sum"])
+	assert.Equal(t, core.ExecutionStatusCompleted, execResult.Status)
+	assert.Equal(t, core.StepStatusCompleted, execResult.StepStates["add_numbers"].Status)
+	assert.Equal(t, float64(30), execResult.StepStates["add_numbers"].Output["sum"])
 
 	// Test a workflow with a remote tool that returns an error
 	mockService.RegisterMethod("math.divide", func(params map[string]interface{}) (interface{}, error) {
@@ -184,9 +205,107 @@ func TestEngine_RemoteToolExecution(t *testing.T) {
 		Edges: []core.Edge{},
 	}
 
-	executionWithError, err := engine.Execute(context.Background(), workflowWithError, nil)
+	executionWithError := &core.Execution{
+		ID:         "exec-remote-error-1",
+		WorkflowID: workflowWithError.ID,
+		Status:     core.ExecutionStatusRunning,
+		StepStates: make(map[string]*core.StepState),
+	}
+
+	execResultWithError, err := engine.Execute(context.Background(), executionWithError, workflowWithError, nil)
 	require.Error(t, err)
-	assert.Equal(t, "failed", executionWithError.Status)
-	assert.Equal(t, "failed", executionWithError.StepStates["divide_by_zero"].Status)
-	assert.Contains(t, executionWithError.StepStates["divide_by_zero"].Error, "remote tool error (code -32000): division by zero")
+	assert.Equal(t, core.ExecutionStatusFailed, execResultWithError.Status)
+	assert.Equal(t, core.StepStatusFailed, execResultWithError.StepStates["divide_by_zero"].Status)
+	assert.Contains(t, execResultWithError.StepStates["divide_by_zero"].Error, "remote tool error (code -32000): division by zero")
+}
+
+func TestEngine_ResumeWorkflow(t *testing.T) {
+	// Create a temporary BoltDB file
+	tmpfile, err := os.CreateTemp("", "test-boltdb-resume-*.db")
+	require.NoError(t, err)
+	dbPath := tmpfile.Name()
+	require.NoError(t, tmpfile.Close()) // Close the file so BoltDB can open it
+	defer func() { assert.NoError(t, os.Remove(dbPath)) }()
+
+	store, err := storage.NewBoltDBStore(dbPath)
+	require.NoError(t, err)
+	defer func() { assert.NoError(t, store.Close()) }()
+
+	// Mock dispatcher that fails on the second step initially
+	mockDispatcher := &MockDispatcher{
+		DispatchFunc: func(ctx context.Context, tool string, params map[string]interface{}) (map[string]interface{}, error) {
+			if tool == "sire:local/step2" && !params["allow_step2_success"].(bool) {
+				return nil, fmt.Errorf("simulated failure for step2")
+			}
+			switch tool {
+			case "sire:local/step1":
+				return map[string]interface{}{"output1": "hello"}, nil
+			case "sire:local/step2":
+				return map[string]interface{}{"output2": params["output1"].(string) + " world"}, nil
+			case "sire:local/step3":
+				return map[string]interface{}{"output3": params["output2"].(string) + "!"}, nil
+			default:
+				return nil, fmt.Errorf("unknown tool: %s", tool)
+			}
+		},
+	}
+
+	// Create a DispatcherMux and register the mock dispatcher
+	dispatcherMux := core.NewDispatcherMux()
+	dispatcherMux.Register("sire", mockDispatcher)
+
+	// First run: Workflow should fail at step2
+	workflow := &core.Workflow{
+		ID:   "resume-workflow",
+		Name: "Resume Test Workflow",
+		Steps: []core.Step{
+			{ID: "step1", Tool: "sire:local/step1"},
+			{ID: "step2", Tool: "sire:local/step2", Params: map[string]interface{}{"allow_step2_success": false}}, // Fails initially
+			{ID: "step3", Tool: "sire:local/step3"},
+		},
+		Edges: []core.Edge{
+			{From: "step1", To: "step2"},
+			{From: "step2", To: "step3"},
+		},
+	}
+
+	engine := core.NewEngine(dispatcherMux, store) // Pass the store
+
+	execution := &core.Execution{
+		ID:         "exec-resume-1",
+		WorkflowID: workflow.ID,
+		Status:     core.ExecutionStatusRunning,
+		StepStates: make(map[string]*core.StepState),
+		CreatedAt:  time.Now(),
+		UpdatedAt:  time.Now(),
+	}
+
+	// Execute the workflow for the first time
+	execResult, err := engine.Execute(context.Background(), execution, workflow, nil)
+	require.Error(t, err)
+	assert.Equal(t, core.ExecutionStatusFailed, execResult.Status)
+	assert.Equal(t, core.StepStatusCompleted, execResult.StepStates["step1"].Status)
+	assert.Equal(t, core.StepStatusFailed, execResult.StepStates["step2"].Status)
+	assert.Contains(t, execResult.StepStates["step2"].Error, "simulated failure for step2")
+	assert.Nil(t, execResult.StepStates["step3"]) // step3 should not have run
+
+	// Simulate orchestrator restart: Load execution from DB
+	loadedExec, err := store.LoadExecution("exec-resume-1")
+	require.NoError(t, err)
+	assert.Equal(t, core.ExecutionStatusFailed, loadedExec.Status) // Still failed from previous run
+	assert.Equal(t, core.StepStatusCompleted, loadedExec.StepStates["step1"].Status)
+	assert.Equal(t, core.StepStatusFailed, loadedExec.StepStates["step2"].Status)
+
+	// Modify the workflow to allow step2 to succeed on resume
+	workflow.Steps[1].Params["allow_step2_success"] = true
+
+	// Re-execute the workflow with the loaded execution state
+	// The engine should resume from step2
+	resumedExecResult, err := engine.Execute(context.Background(), loadedExec, workflow, nil)
+	require.NoError(t, err)
+	assert.Equal(t, core.ExecutionStatusCompleted, resumedExecResult.Status)
+	assert.Equal(t, core.StepStatusCompleted, resumedExecResult.StepStates["step1"].Status)
+	assert.Equal(t, core.StepStatusCompleted, resumedExecResult.StepStates["step2"].Status)
+	assert.Equal(t, core.StepStatusCompleted, resumedExecResult.StepStates["step3"].Status)
+	assert.Equal(t, "hello world!", resumedExecResult.StepStates["step3"].Output["output3"])
 }

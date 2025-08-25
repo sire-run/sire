@@ -80,10 +80,10 @@ var runCmd = &cobra.Command{
 		dispatcher := inprocess.NewInProcessDispatcher()
 		// The engine will now take the store as well (part of S9.2.2)
 		// For now, we'll just pass the dispatcher. The engine will be refactored later.
-		engine := core.NewEngine(dispatcher) // This line will change in S9.2.2
+		engine := core.NewEngine(dispatcher, store) // Pass store to NewEngine
 
 		// Pass the initial execution to the engine
-		execution, err = engine.Execute(context.Background(), &workflow, inputs) // This line will change in S9.2.2
+		execution, err = engine.Execute(context.Background(), execution, &workflow, inputs) // Pass execution object
 		if err != nil {
 			fmt.Printf("Error executing workflow: %v\n", err)
 			os.Exit(1)
