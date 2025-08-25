@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"os"
+	"path/filepath"
 
 	"github.com/sire-run/sire/internal/mcp/inprocess" // Import the inprocess package
 )
@@ -15,7 +16,17 @@ func ReadFile(ctx context.Context, params map[string]interface{}) (map[string]in
 		return nil, fmt.Errorf("parameter 'path' is required and must be a string")
 	}
 
-	data, err := os.ReadFile(path)
+	absPath, err := filepath.Abs(path)
+	if err != nil {
+		return nil, fmt.Errorf("failed to resolve file path: %w", err)
+	}
+	// Clean the path to remove any ../ or ./ components.
+	// WARNING: This does NOT prevent directory traversal if the initial path is outside
+	// the intended working directory. For production use, consider implementing
+	// strict path validation to ensure files are accessed only within designated
+	// and sandboxed directories.
+	cleanedPath := filepath.Clean(absPath)
+	data, err := os.ReadFile(cleanedPath)
 	if err != nil {
 		return nil, fmt.Errorf("failed to read file %s: %w", path, err)
 	}
@@ -33,7 +44,17 @@ func WriteFile(ctx context.Context, params map[string]interface{}) (map[string]i
 		return nil, fmt.Errorf("parameter 'content' is required and must be a string")
 	}
 
-	err := os.WriteFile(path, []byte(content), 0644)
+	absPath, err := filepath.Abs(path)
+	if err != nil {
+		return nil, fmt.Errorf("failed to resolve file path: %w", err)
+	}
+	// Clean the path to remove any ../ or ./ components.
+	// WARNING: This does NOT prevent directory traversal if the initial path is outside
+	// the intended working directory. For production use, consider implementing
+	// strict path validation to ensure files are accessed only within designated
+	// and sandboxed directories.
+	cleanedPath := filepath.Clean(absPath)
+	err = os.WriteFile(cleanedPath, []byte(content), 0o600)
 	if err != nil {
 		return nil, fmt.Errorf("failed to write to file %s: %w", path, err)
 	}

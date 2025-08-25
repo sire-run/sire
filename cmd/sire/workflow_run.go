@@ -4,9 +4,11 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"github.com/google/uuid" // New import for generating UUIDs
 	"os"
+	"path/filepath"
 	"time" // New import for time.Now()
+
+	"github.com/google/uuid" // New import for generating UUIDs
 
 	"github.com/sire-run/sire/internal/core"
 	"github.com/sire-run/sire/internal/mcp/inprocess"
@@ -25,7 +27,17 @@ var runCmd = &cobra.Command{
 	Short: "Run a workflow",
 	Run: func(cmd *cobra.Command, args []string) {
 		// 1. Read workflow file
-		data, err := os.ReadFile(runFile)
+		absRunFile, err := filepath.Abs(runFile)
+		if err != nil {
+			fmt.Printf("Error resolving workflow file path: %v\n", err)
+			os.Exit(1)
+		}
+		// Clean the path to remove any ../ or ./ components.
+		// Note: This does not prevent directory traversal if the initial path is outside
+		// the intended working directory. A more robust solution would involve
+		// checking if the cleaned path is within a trusted base directory.
+		cleanedRunFile := filepath.Clean(absRunFile)
+		data, err := os.ReadFile(cleanedRunFile)
 		if err != nil {
 			fmt.Printf("Error reading workflow file: %v\n", err)
 			os.Exit(1)
@@ -91,7 +103,7 @@ var runCmd = &cobra.Command{
 		// 7. Print output
 		outputJSON, err := json.MarshalIndent(execution, "", "  ")
 		if err != nil {
-			fmt.Printf("Error marshalling execution output: %v\n", err)
+			fmt.Printf("Error marshaling execution output: %v\n", err)
 			os.Exit(1)
 		}
 		fmt.Println(string(outputJSON))

@@ -3,6 +3,7 @@ package main
 import (
 	"fmt"
 	"os"
+	"path/filepath"
 
 	"github.com/sire-run/sire/internal/core"
 	"github.com/spf13/cobra"
@@ -15,7 +16,17 @@ var validateCmd = &cobra.Command{
 	Use:   "validate",
 	Short: "Validate a workflow file",
 	Run: func(cmd *cobra.Command, args []string) {
-		data, err := os.ReadFile(validateFile)
+		absValidateFile, err := filepath.Abs(validateFile)
+		if err != nil {
+			fmt.Printf("Error resolving workflow file path: %v\n", err)
+			os.Exit(1)
+		}
+		// Clean the path to remove any ../ or ./ components.
+		// Note: This does not prevent directory traversal if the initial path is outside
+		// the intended working directory. A more robust solution would involve
+		// checking if the cleaned path is within a trusted base directory.
+		cleanedValidateFile := filepath.Clean(absValidateFile)
+		data, err := os.ReadFile(cleanedValidateFile)
 		if err != nil {
 			fmt.Printf("Error reading workflow file: %v\n", err)
 			os.Exit(1)
