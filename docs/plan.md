@@ -105,7 +105,7 @@ Modern development involves a multitude of tools and services, each with its own
     *   [x] S6.2.2 Refactor `internal/nodes/http` to register its functions as services. Completion Date: 2025-08-24
     *   [x] S6.2.3 Refactor `internal/nodes/transform` to register its functions as services. Completion Date: 2025-08-24
     *   [x] S6.2.4 Ensure all original tests for the nodes pass through the new in-process MCP layer. Completion Date: 2025-08-24
-*   [ ] T6.3 Run linter and formatter  Owner: TBD  Est: 30m
+*   [x] T6.3 Run linter and formatter  Owner: Gemini  Est: 30m Completion Date: 2025-08-24
 
 ### E7: Remote Tool Execution
 
