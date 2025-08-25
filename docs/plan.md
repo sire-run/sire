@@ -114,9 +114,9 @@ Modern development involves a multitude of tools and services, each with its own
     *   [x] S7.1.2 The dispatcher should parse the `mcp:` Tool URI to get the server URL and tool name. Completion Date: 2025-08-24
     *   [x] S7.1.3 Add robust error handling for network failures and remote server errors. Completion Date: 2025-08-24
     *   [x] S7.1.4 Implement a configurable timeout for all remote calls. Completion Date: 2025-08-24
-*   [ ] T7.2 Add integration tests  Owner: TBD  Est: 3h
-    *   [ ] S7.2.1 Create a mock remote MCP server in the test suite.
-    *   [ ] S7.2.2 Write integration tests that use the `core.Engine` to execute a workflow that calls the mock remote server.
+*   [x] T7.2 Add integration tests  Owner: Gemini  Est: 3h Completion Date: 2025-08-24
+    *   [x] S7.2.1 Create a mock remote MCP server in the test suite. Completion Date: 2025-08-24
+    *   [x] S7.2.2 Write integration tests that use the `core.Engine` to execute a workflow that calls the mock remote server. Completion Date: 2025-08-24
 *   [ ] T7.3 Run linter and formatter  Owner: TBD  Est: 30m
 
 ### E8: Documentation and Examples

@@ -38,12 +38,16 @@ func (e *Engine) Execute(ctx context.Context, workflow *Workflow, inputs map[str
 	for _, stepID := range sortedSteps {
 		step := steps[stepID]
 
-		// For now, we'll just merge the outputs of all parent steps.
-		// A more sophisticated approach would be to allow the user to specify which outputs to use.
 		stepInputs := make(map[string]interface{})
-		for k, v := range inputs { // start with the initial inputs
+		// Start with the initial inputs to the workflow
+		for k, v := range inputs {
 			stepInputs[k] = v
 		}
+		// Add parameters defined in the step itself
+		for k, v := range step.Params {
+			stepInputs[k] = v
+		}
+		// Add outputs from parent steps
 		for _, edge := range workflow.Edges {
 			if edge.To == stepID {
 				if parentOutput, ok := stepOutputs[edge.From]; ok {
