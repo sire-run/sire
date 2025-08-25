@@ -1,6 +1,6 @@
 # Sire
 
-**A modern, high-performance workflow automation platform, written in Go.**
+**A modern, high-performance workflow automation platform, built for developers.**
 
 [![Go Version](https://img.shields.io/badge/go-1.25-blue.svg)](https://golang.org/)
 [![License](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](https://opensource.org/licenses/Apache-2.0)
@@ -8,19 +8,25 @@
 
 ---
 
-Sire is a powerful, yet simple workflow automation engine designed for developers. If you've ever felt that existing automation platforms are too complex, have a steep learning curve, or require too much boilerplate to get started, Sire is for you.
+Sire is a powerful, yet simple workflow automation engine designed for developers who value performance, simplicity, and control. If you've ever felt that existing automation platforms are too heavy, too focused on UIs, or require a complex plugin architecture, Sire is for you.
 
-Our goal is to provide a developer-first experience, prioritizing performance, simplicity, and extensibility. We believe that workflow automation should be as simple as writing a script, but with the power and structure of a modern platform.
+Our goal is to provide a developer-first experience, treating workflows as code and prioritizing performance, simplicity, and extensibility.
 
-## Why Sire?
+```
+ (You) --> (CLI or MCP Host) --> [ Sire Engine ]
+```
 
-In a world with established players like [n8n](https://n8n.io/), why build another workflow automation tool? The answer lies in our core principles:
+## The Sire Difference
 
-*   **Performance by Default:** Built in Go, Sire is designed for speed and concurrency. It can handle a high volume of workflows with minimal resource consumption, making it ideal for performance-critical applications.
+In a world with established players like [n8n](https://n8n.io/), Sire takes a fundamentally different approach:
 
-*   **Developer-Centric Simplicity:** We've stripped away the complexity often found in other platforms. With Sire, there's less boilerplate and more convention. Creating a new node is as simple as implementing a Go interface, without the need for a complex plugin system or a fragmented multi-package architecture.
-
-*   **Transparent and Extensible:** Sire is built on a clean and cohesive architecture. The API for creating custom nodes is straightforward and well-defined, making it easy to extend the platform with your own custom logic.
+| Feature                 | Sire (The Developer Way)                               | Traditional Platforms (e.g., n8n)         |
+| ----------------------- | ------------------------------------------------------ | ----------------------------------------- |
+| **Core Philosophy**     | Code-first, developer-centric                          | UI-first, visual-centric                  |
+| **Primary Interface**   | CLI & API (via MCP)                                    | Visual Drag-and-Drop UI                   |
+| **Performance**         | High-performance, concurrent Go backend                | Node.js backend                           |
+| **Node Development**    | Simple Go interface; compile into a single binary      | Complex, multi-package plugin system      |
+| **Workflow Definition** | Human-readable YAML/JSON, perfect for Git              | Primarily JSON stored in a database       |
 
 ## Getting Started
 
@@ -40,65 +46,66 @@ In a world with established players like [n8n](https://n8n.io/), why build anoth
     go build -o sire ./cmd/sire
     ```
 
-### Your First Workflow
+### Your First Workflow: Fetch a Joke
 
-Create a file named `hello_workflow.yml` with the following content:
+Let's create a workflow that fetches a random joke from a public API and saves it to a file. Create a file named `joke_workflow.yml`:
 
 ```yaml
-id: hello-world
-name: My First Workflow
+id: fetch-a-joke
+name: Fetch a Joke Workflow
 nodes:
-  start:
+  get_joke:
+    type: "http.request"
+    config:
+      method: "GET"
+      url: "https://official-joke-api.appspot.com/random_joke"
+
+  save_joke:
     type: "file.write"
     config:
-      path: "hello.txt"
-      content: "Hello, from Sire!"
-  log_message:
-    type: "data.transform"
-    config:
-      operation: "map"
-      expression: "'Workflow executed successfully and wrote to hello.txt'"
-edges:
-  - from: start
-    to: log_message
-```
+      path: "joke.txt"
+      content: "{{ .get_joke.output.body }}"
 
-This workflow will:
-1.  Create a file named `hello.txt` with the content "Hello, from Sire!".
-2.  Use the `data.transform` node to create a success message.
+edges:
+  - from: get_joke
+    to: save_joke
+```
 
 ### Running the Workflow
 
-Execute the workflow using the `sire` CLI:
+Execute the workflow from your terminal:
 
 ```bash
-./sire workflow run -f hello_workflow.yml
+./sire workflow run -f joke_workflow.yml
 ```
 
-You should see a `hello.txt` file in the same directory, and the output of the execution printed to the console.
+You'll find a new file, `joke.txt`, in the directory containing the joke!
 
-## Core Concepts
+## The MCP Server: AI-Powered Workflow Generation
 
-### Workflows
+Sire includes a built-in **Model-Context-Protocol (MCP) server**, a groundbreaking feature that makes workflow creation accessible to everyone.
 
-Workflows are defined in YAML or JSON files. They consist of a set of nodes and the edges that connect them.
+*   **What it is:** The MCP server exposes Sire's capabilities as a set of tools that any MCP-compliant host (like an AI chatbot or an IDE plugin) can use.
+*   **How it works:** The host application connects to an LLM of your choice. The LLM can then use the tools provided by the Sire MCP server to generate complex workflow files based on a simple prompt.
+*   **The Future:** This decouples the workflow engine from the UI, allowing for natural language workflow generation and seamless integration into future AI-powered development environments.
 
-### Nodes
+To start the server:
+```bash
+go build -o mcp-server ./cmd/mcp-server
+./mcp-server
+```
 
-Nodes are the building blocks of a workflow. Each node has a `type` and a `config` block. The `type` corresponds to a registered node implementation, and the `config` provides the static configuration for that node.
+## High-Level Roadmap
 
-### Expressions
+*   **v0.1 (Current):** Core Engine, CLI, initial set of built-in nodes, and a functional MCP server.
+*   **v0.2 (Planned):** Expanded set of built-in nodes, improved expression and templating engine, and official documentation.
+*   **Future:** Community node marketplace, advanced scheduling and trigger options, and potential for a lightweight, optional web UI (as a separate application).
 
-Sire uses the [Expr](https://github.com/expr-lang/expr) language for powerful data transformations. You can use it in nodes like `data.transform` to perform `map`, `filter`, and `reduce` operations on your data.
+## Join the Community
 
-## Built-in Nodes
-
-Sire comes with a set of built-in nodes to get you started:
-
-*   `http.request`: Make HTTP requests (GET, POST, PUT, DELETE).
-*   `file.read`: Read the content of a file.
-*   `file.write`: Write content to a file.
-*   `data.transform`: Perform `map`, `filter`, and `reduce` operations on data.
+*   **GitHub Discussions:** [Link to be added]
+*   **Discord Server:** [Link to be added]
+*   **Twitter:** [Link to be added]
 
 ## Contributing
 
