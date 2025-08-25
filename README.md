@@ -5,6 +5,8 @@
 [![Go Version](https://img.shields.io/badge/go-1.25-blue.svg)](https://golang.org/)
 [![License](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](https://opensource.org/licenses/Apache-2.0)
 [![Build Status](https://img.shields.io/badge/build-passing-brightgreen.svg)](#)
+[![Go Reference](https://pkg.go.dev/badge/github.com/sire-run/sire.svg)](https://pkg.go.dev/github.com/sire-run/sire)
+[![Go Report Card](https://goreportcard.com/badge/github.com/sire-run/sire)](https://goreportcard.com/report/github.com/sire-run/sire)
 
 ---
 
