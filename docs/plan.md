@@ -127,10 +127,10 @@ Modern development involves a multitude of tools and services, each with its own
 
 ### E9: Durable Execution and State Persistence
 
-*   [ ] T9.1 Integrate a persistence layer  Owner: TBD  Est: 4h
-    *   [ ] S9.1.1 Research and select a Go-native embedded database (e.g., BoltDB, BadgerDB). Decision criteria: simplicity, transactional support, performance. Tentatively select BoltDB.
-    *   [ ] S9.1.2 Implement a `storage` service that abstracts all database operations (e.g., `SaveExecution`, `LoadExecution`, `ListPending`).
-    *   [ ] S9.1.3 Add comprehensive unit tests for the storage service, mocking the database interface.
+*   [x] T9.1 Integrate a persistence layer  Owner: Gemini  Est: 4h Completion Date: 2025-08-24
+    *   [x] S9.1.1 Research and select a Go-native embedded database (e.g., BoltDB, BadgerDB). Decision criteria: simplicity, transactional support, performance. Tentatively select BoltDB. Completion Date: 2025-08-24
+    *   [x] S9.1.2 Implement a `storage` service that abstracts all database operations (e.g., `SaveExecution`, `LoadExecution`, `ListPending`). Completion Date: 2025-08-24
+    *   [x] S9.1.3 Add comprehensive unit tests for the storage service, mocking the database interface. Completion Date: 2025-08-24
 *   [ ] T9.2 Refactor the engine for stateful execution  Owner: TBD  Est: 6h
     *   Dependencies: T5.2
     *   [ ] S9.2.1 Modify the `sire workflow run` CLI command to create a new execution record in the DB before starting.

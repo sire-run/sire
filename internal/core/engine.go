@@ -19,8 +19,8 @@ func NewEngine(dispatcher Dispatcher) *Engine {
 func (e *Engine) Execute(ctx context.Context, workflow *Workflow, inputs map[string]interface{}) (*Execution, error) {
 	execution := &Execution{
 		WorkflowID: workflow.ID,
-		Status:     "running",
-		StepStates: make(map[string]StepState),
+		Status:     ExecutionStatusRunning, // Use the new enum
+		StepStates: make(map[string]*StepState), // Initialize with pointers
 	}
 
 	steps := make(map[string]Step)
@@ -60,22 +60,22 @@ func (e *Engine) Execute(ctx context.Context, workflow *Workflow, inputs map[str
 
 		output, err := e.dispatcher.Dispatch(ctx, step.Tool, stepInputs)
 		if err != nil {
-			execution.Status = "failed"
-			execution.StepStates[stepID] = StepState{
-				Status: "failed",
+			execution.Status = ExecutionStatusFailed // Use the new enum
+			execution.StepStates[stepID] = &StepState{ // Assign pointer
+				Status: StepStatusFailed, // Use the new enum
 				Error:  err.Error(),
 			}
 			return execution, fmt.Errorf("error executing step %s: %w", stepID, err)
 		}
 		stepOutputs[stepID] = output
 
-		execution.StepStates[stepID] = StepState{
-			Status: "success",
+		execution.StepStates[stepID] = &StepState{ // Assign pointer
+			Status: StepStatusCompleted, // Use the new enum
 			Output: output,
 		}
 	}
 
-	execution.Status = "success"
+	execution.Status = ExecutionStatusCompleted // Use the new enum
 
 	return execution, nil
 }

@@ -1,5 +1,7 @@
 package core
 
+import "time" // Import time package for time.Time
+
 // Step represents a single unit of work in a workflow.
 type Step struct {
 	ID     string                 `yaml:"id"`
@@ -28,17 +30,42 @@ type Edge struct {
 	To   string `yaml:"to"`
 }
 
-// Execution represents a single run of a workflow.
+// ExecutionStatus defines the status of a workflow execution.
+type ExecutionStatus string
+
+const (
+	ExecutionStatusRunning   ExecutionStatus = "running"
+	ExecutionStatusCompleted ExecutionStatus = "completed"
+	ExecutionStatusFailed    ExecutionStatus = "failed"
+	ExecutionStatusRetrying  ExecutionStatus = "retrying"
+)
+
+// StepStatus defines the status of a single step in an execution.
+type StepStatus string
+
+const (
+	StepStatusPending   StepStatus = "pending"
+	StepStatusRunning   StepStatus = "running"
+	StepStatusCompleted StepStatus = "completed"
+	StepStatusFailed    StepStatus = "failed"
+	StepStatusRetrying  StepStatus = "retrying"
+)
+
+// Execution represents a single, durable run of a workflow.
 type Execution struct {
-	ID         string
-	WorkflowID string
-	Status     string
-	StepStates map[string]StepState
+	ID         string                 `json:"id"`
+	WorkflowID string                 `json:"workflow_id"`
+	Status     ExecutionStatus        `json:"status"` // e.g., running, completed, failed, retrying
+	StepStates map[string]*StepState  `json:"step_states"`
+	CreatedAt  time.Time              `json:"created_at"`
+	UpdatedAt  time.Time              `json:"updated_at"`
 }
 
 // StepState represents the state of a single step in an execution.
 type StepState struct {
-	Status string
-	Output map[string]interface{}
-	Error  string
+	Status      StepStatus             `json:"status"` // e.g., pending, running, completed, failed
+	Output      map[string]interface{} `json:"output,omitempty"`
+	Error       string                 `json:"error,omitempty"`
+	Attempts    int                    `json:"attempts"`
+	NextAttempt time.Time              `json:"next_attempt,omitempty"` // For exponential backoff
 }
