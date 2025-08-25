@@ -101,7 +101,7 @@ var runCmd = &cobra.Command{
 }
 
 func init() {
-	workflowCmd.AddCommand(runCmd)
+	rootCmd.AddCommand(runCmd) // Changed from workflowCmd.AddCommand(runCmd)
 	runCmd.Flags().StringVarP(&runFile, "file", "f", "", "Path to the workflow file (YAML or JSON)")
 	if err := runCmd.MarkFlagRequired("file"); err != nil {
 		fmt.Printf("Error marking flag as required: %v\n", err)

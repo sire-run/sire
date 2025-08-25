@@ -144,7 +144,7 @@ Modern development involves a multitude of tools and services, each with its own
     *   [x] S9.3.4 Implement a configurable exponential backoff policy for retries within the workflow step definition. Completion Date: 2025-08-24
     *   [x] S9.3.5 Add unit tests for the retry logic. Completion Date: 2025-08-24
 *   [ ] T9.4 Update CLI and documentation  Owner: TBD  Est: 2h
-    *   [ ] S9.4.1 Add new CLI commands: `sire execution list` and `sire execution status <id>`.
+    *   [x] S9.4.1 Add new CLI commands: `sire execution list` and `sire execution status <id>`. Completion Date: 2025-08-24
     *   [ ] S9.4.2 Update documentation to explain the durability guarantees and how to configure retry policies.
 
 ### Future Roadmap: Post-Launch Epics
