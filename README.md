@@ -94,14 +94,17 @@ edges:
 
 ```bash
 # The sire binary is now stateful and requires a database file.
-./sire --db-path=sire.db workflow run -f my_workflow.yml
+```bash
+# The sire binary is now stateful and requires a database file.
+./sire --db-path sire.db workflow run -f my_workflow.yml
+```
 ```
 
 ## High-Level Roadmap
 
-*   **v0.1 (Current):** MCP-first architecture, in-process tool server, remote tool execution, and embedded durable state.
+*   **v0.1 (Current):** MCP-first architecture, in-process tool server, remote tool execution, with initial dispatcher implementation.
 *   **v0.2 (Planned):** Enhanced CLI for managing executions, improved templating engine, and official documentation for creating MCP tool servers.
-*   **Future:** Community tool registry, advanced scheduling and triggering, and optional web UI for monitoring executions.
+*   **Future:** Community tool registry, and optional web UI for monitoring executions.
 
 ## Join the Community
 
