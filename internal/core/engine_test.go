@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -22,6 +23,43 @@ func (m *MockDispatcher) Dispatch(ctx context.Context, tool string, params map[s
 	return nil, nil
 }
 
+// MockStore is a mock implementation of the Store interface for testing.
+type MockStore struct {
+	Executions map[string]*Execution
+}
+
+func (m *MockStore) SaveExecution(execution *Execution) error {
+	if m.Executions == nil {
+		m.Executions = make(map[string]*Execution)
+	}
+	m.Executions[execution.ID] = execution
+	return nil
+}
+
+func (m *MockStore) LoadExecution(id string) (*Execution, error) {
+	if m.Executions == nil {
+		return nil, fmt.Errorf("store is empty")
+	}
+	exec, ok := m.Executions[id]
+	if !ok {
+		return nil, fmt.Errorf("execution with ID %s not found", id)
+	}
+	return exec, nil
+}
+
+func (m *MockStore) ListPendingExecutions() ([]*Execution, error) {
+	var pending []*Execution
+	if m.Executions == nil {
+		return pending, nil
+	}
+	for _, exec := range m.Executions {
+		if exec.Status == ExecutionStatusRunning || exec.Status == ExecutionStatusRetrying {
+			pending = append(pending, exec)
+		}
+	}
+	return pending, nil
+}
+
 func TestEngine_Execute_LinearWorkflow(t *testing.T) {
 	// 1. Setup
 	dispatcher := &MockDispatcher{
@@ -36,7 +74,10 @@ func TestEngine_Execute_LinearWorkflow(t *testing.T) {
 		},
 	}
 
-	engine := NewEngine(dispatcher)
+	// Create a dummy store for the engine
+	dummyStore := &MockStore{}
+
+	engine := NewEngine(dispatcher, dummyStore)
 
 	workflow := &Workflow{
 		ID:   "wf-1",
@@ -50,15 +91,22 @@ func TestEngine_Execute_LinearWorkflow(t *testing.T) {
 		},
 	}
 
+	execution := &Execution{
+		ID:         "exec-1",
+		WorkflowID: workflow.ID,
+		Status:     ExecutionStatusRunning,
+		StepStates: make(map[string]*StepState),
+	}
+
 	// 2. Execute
-	execution, err := engine.Execute(context.Background(), workflow, nil)
+	execResult, err := engine.Execute(context.Background(), execution, workflow, nil)
 
 	// 3. Assert
 	require.NoError(t, err)
-	assert.Equal(t, "success", execution.Status)
-	assert.Equal(t, "success", execution.StepStates["node-1"].Status)
-	assert.Equal(t, "success", execution.StepStates["node-2"].Status)
-	assert.Equal(t, "hello world", execution.StepStates["node-2"].Output["node2_output"])
+	assert.Equal(t, ExecutionStatusCompleted, execResult.Status)
+	assert.Equal(t, StepStatusCompleted, execResult.StepStates["node-1"].Status)
+	assert.Equal(t, StepStatusCompleted, execResult.StepStates["node-2"].Status)
+	assert.Equal(t, "hello world", execResult.StepStates["node-2"].Output["node2_output"])
 }
 
 func TestEngine_Execute_FailingWorkflow(t *testing.T) {
@@ -69,7 +117,10 @@ func TestEngine_Execute_FailingWorkflow(t *testing.T) {
 		},
 	}
 
-	engine := NewEngine(dispatcher)
+	// Create a dummy store for the engine
+	dummyStore := &MockStore{}
+
+	engine := NewEngine(dispatcher, dummyStore)
 
 	workflow := &Workflow{
 		ID:   "wf-1",
@@ -79,14 +130,21 @@ func TestEngine_Execute_FailingWorkflow(t *testing.T) {
 		},
 	}
 
+	execution := &Execution{
+		ID:         "exec-failing-1",
+		WorkflowID: workflow.ID,
+		Status:     ExecutionStatusRunning,
+		StepStates: make(map[string]*StepState),
+	}
+
 	// 2. Execute
-	execution, err := engine.Execute(context.Background(), workflow, nil)
+	execResult, err := engine.Execute(context.Background(), execution, workflow, nil)
 
 	// 3. Assert
 	require.Error(t, err)
-	assert.Equal(t, "failed", execution.Status)
-	assert.Equal(t, "failed", execution.StepStates["node-1"].Status)
-	assert.Equal(t, "something went wrong", execution.StepStates["node-1"].Error)
+	assert.Equal(t, ExecutionStatusFailed, execResult.Status)
+	assert.Equal(t, StepStatusFailed, execResult.StepStates["node-1"].Status)
+	assert.Equal(t, "something went wrong", execResult.StepStates["node-1"].Error)
 }
 
 func TestTopologicalSort(t *testing.T) {
@@ -142,7 +200,7 @@ func TestTopologicalSort(t *testing.T) {
 
 		_, err := topologicalSort(steps, edges)
 		require.Error(t, err)
-		assert.Equal(t, "workflow has a cycle", err.Error())
+		assert.Contains(t, err.Error(), "workflow has a cycle")
 	})
 }
 
@@ -167,7 +225,10 @@ func TestEngine_Execute_BranchingWorkflow(t *testing.T) {
 		},
 	}
 
-	engine := NewEngine(dispatcher)
+	// Create a dummy store for the engine
+	dummyStore := &MockStore{}
+
+	engine := NewEngine(dispatcher, dummyStore)
 
 	workflow := &Workflow{
 		ID:   "wf-branching",
@@ -186,24 +247,34 @@ func TestEngine_Execute_BranchingWorkflow(t *testing.T) {
 		},
 	}
 
+	execution := &Execution{
+		ID:         "exec-branching-1",
+		WorkflowID: workflow.ID,
+		Status:     ExecutionStatusRunning,
+		StepStates: make(map[string]*StepState),
+	}
+
 	// 2. Execute
-	execution, err := engine.Execute(context.Background(), workflow, nil)
+	execResult, err := engine.Execute(context.Background(), execution, workflow, nil)
 
 	// 3. Assert
 	require.NoError(t, err)
-	assert.Equal(t, "success", execution.Status)
-	assert.Equal(t, "success", execution.StepStates["node-1"].Status)
-	assert.Equal(t, "success", execution.StepStates["node-2"].Status)
-	assert.Equal(t, "success", execution.StepStates["node-3"].Status)
-	assert.Equal(t, "success", execution.StepStates["node-4"].Status)
-	assert.Equal(t, "hello from node2 | hello from node3", execution.StepStates["node-4"].Output["node4_output"])
+	assert.Equal(t, ExecutionStatusCompleted, execResult.Status)
+	assert.Equal(t, StepStatusCompleted, execResult.StepStates["node-1"].Status)
+	assert.Equal(t, StepStatusCompleted, execResult.StepStates["node-2"].Status)
+	assert.Equal(t, StepStatusCompleted, execResult.StepStates["node-3"].Status)
+	assert.Equal(t, StepStatusCompleted, execResult.StepStates["node-4"].Status)
+	assert.Equal(t, "hello from node2 | hello from node3", execResult.StepStates["node-4"].Output["node4_output"])
 }
 
 func TestEngine_Execute_WithCycle(t *testing.T) {
 	// 1. Setup
 	dispatcher := &MockDispatcher{}
 
-	engine := NewEngine(dispatcher)
+	// Create a dummy store for the engine
+	dummyStore := &MockStore{}
+
+	engine := NewEngine(dispatcher, dummyStore)
 
 	workflow := &Workflow{
 		ID:   "wf-cycle",
@@ -218,10 +289,125 @@ func TestEngine_Execute_WithCycle(t *testing.T) {
 		},
 	}
 
+	execution := &Execution{
+		ID:         "exec-cycle-1",
+		WorkflowID: workflow.ID,
+		Status:     ExecutionStatusRunning,
+		StepStates: make(map[string]*StepState),
+	}
+
 	// 2. Execute
-	_, err := engine.Execute(context.Background(), workflow, nil)
+	_, err := engine.Execute(context.Background(), execution, workflow, nil)
 
 	// 3. Assert
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "workflow has a cycle")
+}
+
+func TestEngine_RetryLogic(t *testing.T) {
+	// Mock dispatcher that fails for a few attempts, then succeeds
+	attemptCount := 0
+	mockDispatcher := &MockDispatcher{
+		DispatchFunc: func(ctx context.Context, tool string, params map[string]interface{}) (map[string]interface{}, error) {
+			attemptCount++
+			if tool == "sire:local/flaky-tool" && attemptCount <= 2 { // Fail for first 2 attempts
+				return nil, fmt.Errorf("simulated transient error on attempt %d", attemptCount)
+			}
+			return map[string]interface{}{"result": "success"}, nil
+		},
+	}
+
+	// Create a dummy store for the engine
+	dummyStore := &MockStore{}
+
+	engine := NewEngine(mockDispatcher, dummyStore)
+
+	workflow := &Workflow{
+		ID:   "retry-workflow",
+		Name: "Retry Test Workflow",
+		Steps: []Step{
+			{
+				ID:   "flaky_step",
+				Tool: "sire:local/flaky-tool",
+				Retry: &RetryPolicy{
+					MaxAttempts: 3,
+					Backoff:     "exponential",
+				},
+			},
+		},
+		Edges: []Edge{},
+	}
+
+	execution := &Execution{
+		ID:         "exec-retry-1",
+		WorkflowID: workflow.ID,
+		Status:     ExecutionStatusRunning,
+		StepStates: make(map[string]*StepState),
+	}
+
+	// First execution attempt (should fail and retry)
+	execResult, err := engine.Execute(context.Background(), execution, workflow, nil)
+	require.Error(t, err)
+	assert.Equal(t, ExecutionStatusRunning, execResult.Status) // Workflow still running as step is retrying
+	assert.Equal(t, StepStatusRetrying, execResult.StepStates["flaky_step"].Status)
+	assert.Equal(t, 1, execResult.StepStates["flaky_step"].Attempts)
+	assert.Contains(t, execResult.StepStates["flaky_step"].Error, "simulated transient error on attempt 1")
+	assert.False(t, execResult.StepStates["flaky_step"].NextAttempt.IsZero())
+
+	// Force NextAttempt to be in the past for the next run
+	execResult.StepStates["flaky_step"].NextAttempt = time.Time{} // Set to zero value
+
+	// Second execution attempt (should fail and retry again)
+	execResult, err = engine.Execute(context.Background(), execResult, workflow, nil) // Pass previous state
+	require.Error(t, err)
+	assert.Equal(t, ExecutionStatusRunning, execResult.Status)
+	assert.Equal(t, StepStatusRetrying, execResult.StepStates["flaky_step"].Status)
+	assert.Equal(t, 2, execResult.StepStates["flaky_step"].Attempts)
+	assert.Contains(t, execResult.StepStates["flaky_step"].Error, "simulated transient error on attempt 2")
+	assert.False(t, execResult.StepStates["flaky_step"].NextAttempt.IsZero())
+
+	// Force NextAttempt to be in the past for the next run
+	execResult.StepStates["flaky_step"].NextAttempt = time.Time{} // Set to zero value
+
+	// Third execution attempt (should succeed)
+	execResult, err = engine.Execute(context.Background(), execResult, workflow, nil) // Pass previous state
+	require.NoError(t, err)
+	assert.Equal(t, ExecutionStatusCompleted, execResult.Status)
+	assert.Equal(t, StepStatusCompleted, execResult.StepStates["flaky_step"].Status)
+	assert.Equal(t, 3, execResult.StepStates["flaky_step"].Attempts) // Attempts count should still be 3
+	assert.Equal(t, "success", execResult.StepStates["flaky_step"].Output["result"])
+	assert.Empty(t, execResult.StepStates["flaky_step"].Error)
+	assert.True(t, execResult.StepStates["flaky_step"].NextAttempt.IsZero()) // NextAttempt should be zeroed on success
+
+	// Test exceeding MaxAttempts
+	attemptCount = 0 // Reset attempt count for new test
+	workflowFailed := &Workflow{
+		ID:   "retry-workflow-failed",
+		Name: "Retry Test Workflow Failed",
+		Steps: []Step{
+			{
+				ID:   "flaky_step_failed",
+				Tool: "sire:local/flaky-tool",
+				Retry: &RetryPolicy{
+					MaxAttempts: 1, // Only 1 attempt allowed
+					Backoff:     "exponential",
+				},
+			},
+		},
+		Edges: []Edge{},
+	}
+
+	executionFailed := &Execution{
+		ID:         "exec-retry-failed-1",
+		WorkflowID: workflowFailed.ID,
+		Status:     ExecutionStatusRunning,
+		StepStates: make(map[string]*StepState),
+	}
+
+	execResultFailed, err := engine.Execute(context.Background(), executionFailed, workflowFailed, nil)
+	require.Error(t, err)
+	assert.Equal(t, ExecutionStatusFailed, execResultFailed.Status) // Workflow should be failed
+	assert.Equal(t, StepStatusFailed, execResultFailed.StepStates["flaky_step_failed"].Status)
+	assert.Equal(t, 1, execResultFailed.StepStates["flaky_step_failed"].Attempts)
+	assert.Contains(t, execResultFailed.StepStates["flaky_step_failed"].Error, "simulated transient error on attempt 1")
 }

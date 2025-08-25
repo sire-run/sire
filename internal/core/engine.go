@@ -114,10 +114,8 @@ func (e *Engine) Execute(ctx context.Context, execution *Execution, workflow *Wo
 				case "exponential":
 					// Simple exponential backoff: base * 2^(attempts-1)
 					baseDuration := 1 * time.Second // Default base
-					if step.Retry.MaxAttempts > 0 { // Use MaxAttempts as a proxy for a configurable base if needed
-						// For simplicity, let's just use a fixed multiplier for now
-						backoffDuration = time.Duration(stepState.Attempts) * time.Second * 2
-					}
+					// For simplicity, let's use baseDuration * Attempts for now
+					backoffDuration = baseDuration * time.Duration(stepState.Attempts)
 				default:
 					// Default to a fixed backoff if not specified or unknown
 					backoffDuration = 5 * time.Second
