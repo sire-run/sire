@@ -202,7 +202,7 @@ func TestTopologicalSort(t *testing.T) {
 			t.Fatalf("unexpected error: %v", err)
 		}
 		// The exact order of node-2 and node-3 can vary, so we check for both possibilities.
-		if !(sorted[1] == "node-2" && sorted[2] == "node-3") && !(sorted[1] == "node-3" && sorted[2] == "node-2") { //nolint:all "Ignoring De Morgan's law suggestion as current form is clear and linter is overly aggressive"
+		if !(sorted[1] == "node-2" && sorted[2] == "node-3") && !(sorted[1] == "node-3" && sorted[2] == "node-2") { //nolint:staticcheck // Ignoring De Morgan's law suggestion as current form is clear and linter is overly aggressive
 			t.Errorf("expected sorted order of node-2 and node-3 to be flexible, got %v", sorted)
 		}
 		if sorted[0] != "node-1" {

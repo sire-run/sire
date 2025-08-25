@@ -12,7 +12,7 @@ type Step struct {
 
 // RetryPolicy defines the retry behavior for a step.
 type RetryPolicy struct {
-	MaxAttempts int    `yaml:"maxAttempts"`
+	MaxAttempts int    `yaml:"max_attempts"` //nolint:tagliatelle
 	Backoff     string `yaml:"backoff"` // e.g., "exponential"
 }
 
