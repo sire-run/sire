@@ -7,17 +7,12 @@ import (
 
 // Engine is responsible for executing workflows.
 type Engine struct {
-	registry *NodeRegistry
+	dispatcher Dispatcher
 }
 
-// NewEngine creates a new execution engine using the global registry.
-func NewEngine() *Engine {
-	return &Engine{registry: globalRegistry}
-}
-
-// NewEngineWithRegistry creates a new execution engine with a specific registry for testing.
-func NewEngineWithRegistry(registry *NodeRegistry) *Engine {
-	return &Engine{registry: registry}
+// NewEngine creates a new execution engine.
+func NewEngine(dispatcher Dispatcher) *Engine {
+	return &Engine{dispatcher: dispatcher}
 }
 
 // Execute executes a workflow.
@@ -25,61 +20,52 @@ func (e *Engine) Execute(ctx context.Context, workflow *Workflow, inputs map[str
 	execution := &Execution{
 		WorkflowID: workflow.ID,
 		Status:     "running",
-		NodeStates: make(map[string]NodeState),
+		StepStates: make(map[string]StepState),
 	}
 
-	// 1. Instantiate all nodes from the definitions
-	nodes := make(map[string]Node)
-	for id, definition := range workflow.Nodes {
-		constructor, err := e.registry.GetNodeConstructor(definition.Type)
-		if err != nil {
-			return nil, fmt.Errorf("error getting constructor for node %s of type %s: %w", id, definition.Type, err)
-		}
-		node, err := constructor(definition.Config)
-		if err != nil {
-			return nil, fmt.Errorf("error instantiating node %s: %w", id, err)
-		}
-		nodes[id] = node
+	steps := make(map[string]Step)
+	for _, step := range workflow.Steps {
+		steps[step.ID] = step
 	}
 
-	sortedNodes, err := topologicalSort(nodes, workflow.Edges)
+	sortedSteps, err := topologicalSort(steps, workflow.Edges)
 	if err != nil {
 		return nil, err
 	}
 
-	nodeOutputs := make(map[string]map[string]interface{})
+	stepOutputs := make(map[string]map[string]interface{})
 
-	for _, nodeID := range sortedNodes {
-		node := nodes[nodeID]
+	for _, stepID := range sortedSteps {
+		step := steps[stepID]
 
-		// For now, we'll just merge the outputs of all parent nodes.
+		// For now, we'll just merge the outputs of all parent steps.
 		// A more sophisticated approach would be to allow the user to specify which outputs to use.
-		nodeInputs := make(map[string]interface{})
+		stepInputs := make(map[string]interface{})
 		for k, v := range inputs { // start with the initial inputs
-			nodeInputs[k] = v
+			stepInputs[k] = v
 		}
 		for _, edge := range workflow.Edges {
-			if edge.To == nodeID {
-				if parentOutput, ok := nodeOutputs[edge.From]; ok {
+			if edge.To == stepID {
+				if parentOutput, ok := stepOutputs[edge.From]; ok {
 					for k, v := range parentOutput {
-						nodeInputs[k] = v
+						stepInputs[k] = v
 					}
 				}
 			}
 		}
 
-		output, err := node.Execute(ctx, nodeInputs)
+		output, err := e.dispatcher.Dispatch(ctx, step.Tool, stepInputs)
 		if err != nil {
 			execution.Status = "failed"
-			execution.NodeStates[nodeID] = NodeState{
+			execution.StepStates[stepID] = StepState{
 				Status: "failed",
 				Error:  err.Error(),
 			}
-			return execution, fmt.Errorf("error executing node %s: %w", nodeID, err)
+			return execution, fmt.Errorf("error executing step %s: %w", stepID, err)
 		}
-		nodeOutputs[nodeID] = output
+		stepOutputs[stepID] = output
 
-		execution.NodeStates[nodeID] = NodeState{
+		execution.StepStates[stepID] = StepState{
 			Status: "success",
 			Output: output,
 		}
@@ -91,17 +77,17 @@ func (e *Engine) Execute(ctx context.Context, workflow *Workflow, inputs map[str
 }
 
 // a simple implementation of Kahn's algorithm for topological sorting.
-func topologicalSort(nodes map[string]Node, edges []Edge) ([]string, error) {
+func topologicalSort(steps map[string]Step, edges []Edge) ([]string, error) {
 	// 1. Calculate in-degrees
 	inDegree := make(map[string]int)
-	for id := range nodes {
+	for id := range steps {
 		inDegree[id] = 0
 	}
 	for _, edge := range edges {
 		inDegree[edge.To]++
 	}
 
-	// 2. Initialize queue with nodes with in-degree 0
+	// 2. Initialize queue with steps with in-degree 0
 	queue := []string{}
 	for id, degree := range inDegree {
 		if degree == 0 {
@@ -128,7 +114,7 @@ func topologicalSort(nodes map[string]Node, edges []Edge) ([]string, error) {
 	}
 
 	// 5. Check for cycles
-	if len(result) != len(nodes) {
+	if len(result) != len(steps) {
 		return nil, fmt.Errorf("workflow has a cycle")
 	}
 

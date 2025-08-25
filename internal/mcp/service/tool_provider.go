@@ -1,29 +1,28 @@
 package service
 
-import (
-	"fmt"
-	"github.com/sire-run/sire/internal/core"
-	"github.com/sire-run/sire/internal/mcp/integration"
-)
+import ()
 
 // ToolProvider provides the implementation for the MCP tools.
 type ToolProvider struct {
-	sireAdapter *integration.SireAdapter
+	// sireAdapter *integration.SireAdapter // Temporarily commented out
 }
 
 // NewToolProvider creates a new ToolProvider.
 func NewToolProvider() *ToolProvider {
 	return &ToolProvider{
-		sireAdapter: integration.NewSireAdapter(),
+		// sireAdapter: integration.NewSireAdapter(), // Temporarily commented out
 	}
 }
 
 // ListNodes lists the available Sire nodes.
+/* // Temporarily commented out
 func (p *ToolProvider) ListNodes() []string {
 	return p.sireAdapter.GetNodeTypes()
 }
+*/
 
 // CreateWorkflow creates a new Sire workflow.
+/* // Temporarily commented out
 func (p *ToolProvider) CreateWorkflow(steps []map[string]interface{}) (*core.Workflow, error) {
 	// This is a placeholder implementation.
 	// A real implementation would be more sophisticated.
@@ -50,3 +49,4 @@ func (p *ToolProvider) CreateWorkflow(steps []map[string]interface{}) (*core.Wor
 		Edges: edges,
 	}, nil
 }
+*/

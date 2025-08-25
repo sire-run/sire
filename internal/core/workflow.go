@@ -1,30 +1,31 @@
 package core
 
-import "context"
+// Step represents a single unit of work in a workflow.
+type Step struct {
+	ID     string                 `yaml:"id"`
+	Tool   string                 `yaml:"tool"`
+	Params map[string]interface{} `yaml:"params,omitempty"`
+	Retry  *RetryPolicy           `yaml:"retry,omitempty"`
+}
 
-// Node is the interface that all nodes must implement.
-type Node interface {
-	Execute(ctx context.Context, inputs map[string]interface{}) (map[string]interface{}, error)
+// RetryPolicy defines the retry behavior for a step.
+type RetryPolicy struct {
+	MaxAttempts int    `yaml:"max_attempts"`
+	Backoff     string `yaml:"backoff"` // e.g., "exponential"
 }
 
 // Workflow defines the structure of a workflow.
 type Workflow struct {
-	ID    string
-	Name  string
-	Nodes map[string]NodeDefinition
-	Edges []Edge
+	ID    string `yaml:"id"`
+	Name  string `yaml:"name"`
+	Steps []Step `yaml:"steps"`
+	Edges []Edge `yaml:"edges"`
 }
 
-// NodeDefinition represents a node in a workflow definition.
-type NodeDefinition struct {
-	Type   string
-	Config map[string]interface{}
-}
-
-// Edge represents a connection between two nodes in a workflow.
+// Edge represents a connection between two steps in a workflow.
 type Edge struct {
-	From string
-	To   string
+	From string `yaml:"from"`
+	To   string `yaml:"to"`
 }
 
 // Execution represents a single run of a workflow.
@@ -32,11 +33,11 @@ type Execution struct {
 	ID         string
 	WorkflowID string
 	Status     string
-	NodeStates map[string]NodeState
+	StepStates map[string]StepState
 }
 
-// NodeState represents the state of a single node in an execution.
-type NodeState struct {
+// StepState represents the state of a single step in an execution.
+type StepState struct {
 	Status string
 	Output map[string]interface{}
 	Error  string
