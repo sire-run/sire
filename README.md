@@ -1,6 +1,6 @@
-# Sire
+# Sire: The Universal MCP Orchestrator
 
-**A modern, high-performance workflow automation platform, built for developers.**
+**Orchestrate anything, from anywhere, with code.**
 
 [![Go Version](https://img.shields.io/badge/go-1.25-blue.svg)](https://golang.org/)
 [![License](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](https://opensource.org/licenses/Apache-2.0)
@@ -8,25 +8,69 @@
 
 ---
 
-Sire is a powerful, yet simple workflow automation engine designed for developers who value performance, simplicity, and control. If you've ever felt that existing automation platforms are too heavy, too focused on UIs, or require a complex plugin architecture, Sire is for you.
+Sire is a new kind of automation platform for developers. It's a lightweight, high-performance orchestrator that connects and runs tools using the **Model-Context-Protocol (MCP)**, an open, JSON-RPC-based standard. 
 
-Our goal is to provide a developer-first experience, treating workflows as code and prioritizing performance, simplicity, and extensibility.
+Instead of a heavy, UI-focused platform or a complex, SDK-based engine, Sire offers a simple, powerful alternative: **define workflows in YAML, run them from the CLI, and extend the system in any language** by creating a simple MCP server for your tool.
 
 ```
- (You) --> (CLI or MCP Host) --> [ Sire Engine ]
+(Your Service) <--> MCP <--> [Sire Orchestrator] <--> MCP <--> (Another Service)
 ```
 
 ## The Sire Difference
 
-In a world with established players like [n8n](https://n8n.io/), Sire takes a fundamentally different approach:
+How is Sire different from...?
 
-| Feature                 | Sire (The Developer Way)                               | Traditional Platforms (e.g., n8n)         |
-| ----------------------- | ------------------------------------------------------ | ----------------------------------------- |
-| **Core Philosophy**     | Code-first, developer-centric                          | UI-first, visual-centric                  |
-| **Primary Interface**   | CLI & API (via MCP)                                    | Visual Drag-and-Drop UI                   |
-| **Performance**         | High-performance, concurrent Go backend                | Node.js backend                           |
-| **Node Development**    | Simple Go interface; compile into a single binary      | Complex, multi-package plugin system      |
-| **Workflow Definition** | Human-readable YAML/JSON, perfect for Git              | Primarily JSON stored in a database       |
+| Category | Sire (The Orchestrator) | Zapier / n8n (The UI Platform) | Temporal (The Workflow Engine) |
+| :--- | :--- | :--- | :--- |
+| **Philosophy** | **Orchestration as Code.** Declarative YAML files that live in your Git repo. | **Automation as a UI.** Visual, drag-and-drop interface for non-developers. | **Workflows as Code.** Imperative code written with a proprietary, language-specific SDK. |
+| **Extensibility** | **Language-agnostic via MCP.** Expose your tool via a simple, open protocol. No plugins to write. | **Language-specific plugins.** Must write plugins in their required language (e.g., TypeScript) and conform to their complex SDK. | **Language-specific SDK.** Requires instrumenting your code with their SDK. Tightly coupled. |
+| **Architecture** | **Lightweight & Decoupled.** A single, simple binary that orchestrates any MCP-compliant tool. | **Monolithic.** A large, all-in-one platform that includes the UI, engine, and a vast library of built-in nodes. | **Heavy & Distributed.** A complex, cluster-based system that requires separate deployment and management. |
+| **Durability** | **Built-in.** Uses an embedded database to guarantee at-least-once execution of every step. | **Managed Service.** Durability is handled by the platform, but you have little control over it. | **Core Feature.** Provides strong guarantees, but requires careful adherence to deterministic coding rules. |
+
+## Core Principles
+
+*   **MCP-First Architecture:** The orchestrator is completely decoupled from the tools it executes. MCP is the universal contract.
+*   **Workflows as Code:** Workflows are defined in declarative YAML, designed to be version-controlled, reviewed, and edited as code.
+*   **Durable & Reliable:** With an embedded database, Sire guarantees that your workflows will run to completion, even if the orchestrator or the tools it calls restart or fail transiently.
+*   **High-Performance Orchestration:** The compiled Go core is designed to be a lean, low-latency dispatcher, ensuring your workflows run efficiently.
+
+## Example: A Federated Workflow
+
+Sire shines at orchestrating tools from different sources. This workflow fetches data from a remote public API, processes it with a local Sire tool, and then calls a separate internal service to store the result.
+
+```yaml
+id: federated-data-pipeline
+name: "Fetch, Process, and Store Data"
+steps:
+  - id: fetch_public_data
+    # Call a tool on a remote, third-party MCP server
+    tool: "mcp:http://api.public-data.com/rpc#data.fetch"
+    params:
+      source_id: "12345"
+    retry:
+      max_attempts: 3
+
+  - id: transform_the_data
+    # Use a built-in, high-performance local tool
+    tool: "sire:local/data.transform"
+    params:
+      operation: "map"
+      expression: "item.value * 2"
+      data: "{{ .fetch_public_data.output.records }}"
+
+  - id: store_in_archive
+    # Call a tool on our internal microservice
+    tool: "mcp:http://archiver.internal.svc/rpc#s3.upload"
+    params:
+      bucket: "processed-results"
+      body: "{{ .transform_the_data.output.result }}"
+
+edges:
+  - from: fetch_public_data
+    to: transform_the_data
+  - from: transform_the_data
+    to: store_in_archive
+```
 
 ## Getting Started
 
@@ -46,70 +90,27 @@ In a world with established players like [n8n](https://n8n.io/), Sire takes a fu
     go build -o sire ./cmd/sire
     ```
 
-### Your First Workflow: Fetch a Joke
-
-Let's create a workflow that fetches a random joke from a public API and saves it to a file. Create a file named `joke_workflow.yml`:
-
-```yaml
-id: fetch-a-joke
-name: Fetch a Joke Workflow
-nodes:
-  get_joke:
-    type: "http.request"
-    config:
-      method: "GET"
-      url: "https://official-joke-api.appspot.com/random_joke"
-
-  save_joke:
-    type: "file.write"
-    config:
-      path: "joke.txt"
-      content: "{{ .get_joke.output.body }}"
-
-edges:
-  - from: get_joke
-    to: save_joke
-```
-
-### Running the Workflow
-
-Execute the workflow from your terminal:
+### Running a Workflow
 
 ```bash
-./sire workflow run -f joke_workflow.yml
-```
-
-You'll find a new file, `joke.txt`, in the directory containing the joke!
-
-## The MCP Server: AI-Powered Workflow Generation
-
-Sire includes a built-in **Model-Context-Protocol (MCP) server**, a groundbreaking feature that makes workflow creation accessible to everyone.
-
-*   **What it is:** The MCP server exposes Sire's capabilities as a set of tools that any MCP-compliant host (like an AI chatbot or an IDE plugin) can use.
-*   **How it works:** The host application connects to an LLM of your choice. The LLM can then use the tools provided by the Sire MCP server to generate complex workflow files based on a simple prompt.
-*   **The Future:** This decouples the workflow engine from the UI, allowing for natural language workflow generation and seamless integration into future AI-powered development environments.
-
-To start the server:
-```bash
-go build -o mcp-server ./cmd/mcp-server
-./mcp-server
+# The sire binary is now stateful and requires a database file.
+./sire --db-path=sire.db workflow run -f my_workflow.yml
 ```
 
 ## High-Level Roadmap
 
-*   **v0.1 (Current):** Core Engine, CLI, initial set of built-in nodes, and a functional MCP server.
-*   **v0.2 (Planned):** Expanded set of built-in nodes, improved expression and templating engine, and official documentation.
-*   **Future:** Community node marketplace, advanced scheduling and trigger options, and potential for a lightweight, optional web UI (as a separate application).
+*   **v0.1 (Current):** MCP-first architecture, in-process tool server, remote tool execution, and embedded durable state.
+*   **v0.2 (Planned):** Enhanced CLI for managing executions, improved templating engine, and official documentation for creating MCP tool servers.
+*   **Future:** Community tool registry, advanced scheduling and triggering, and optional web UI for monitoring executions.
 
 ## Join the Community
 
 *   **GitHub Discussions:** [Link to be added]
 *   **Discord Server:** [Link to be added]
-*   **Twitter:** [Link to be added]
 
 ## Contributing
 
-We welcome contributions of all kinds! Whether it's a bug report, a new feature, or a new node, we'd love to have your help. Please see our (upcoming) `CONTRIBUTING.md` for more details.
+We welcome contributions of all kinds! Please see our (upcoming) `CONTRIBUTING.md` for more details.
 
 ## License
 
