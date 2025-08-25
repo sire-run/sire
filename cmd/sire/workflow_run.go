@@ -4,9 +4,9 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"github.com/google/uuid" // New import for generating UUIDs
 	"os"
 	"time" // New import for time.Now()
-	"github.com/google/uuid" // New import for generating UUIDs
 
 	"github.com/sire-run/sire/internal/core"
 	"github.com/sire-run/sire/internal/mcp/inprocess"
@@ -18,7 +18,6 @@ import (
 var (
 	runFile   string
 	runInputs string
-	dbPath    string // New global variable for DB path
 )
 
 var runCmd = &cobra.Command{
@@ -75,7 +74,6 @@ var runCmd = &cobra.Command{
 			fmt.Printf("Error saving new execution: %v\n", err)
 			os.Exit(1)
 		}
-
 
 		// 6. Execute workflow
 		dispatcher := inprocess.NewInProcessDispatcher()

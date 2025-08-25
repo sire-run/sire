@@ -12,8 +12,8 @@ import (
 
 	"github.com/sire-run/sire/internal/core"
 	"github.com/sire-run/sire/internal/mcp/inprocess" // Import inprocess dispatcher
-	"github.com/sire-run/sire/internal/mcp/remote"   // Import remote dispatcher types
-	"github.com/sire-run/sire/internal/storage"      // New import for storage
+	"github.com/sire-run/sire/internal/mcp/remote"    // Import remote dispatcher types
+	"github.com/sire-run/sire/internal/storage"       // New import for storage
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )

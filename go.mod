@@ -4,6 +4,7 @@ go 1.25.0
 
 require (
 	github.com/expr-lang/expr v1.17.6
+	github.com/google/uuid v1.6.0
 	github.com/gorilla/rpc v1.2.1
 	github.com/spf13/cobra v1.8.1
 	github.com/stretchr/testify v1.11.0

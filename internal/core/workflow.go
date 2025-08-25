@@ -53,13 +53,13 @@ const (
 
 // Execution represents a single, durable run of a workflow.
 type Execution struct {
-	ID         string                 `json:"id"`
-	WorkflowID string                 `json:"workflow_id"`
-	Workflow   *Workflow              `json:"workflow"` // New field to store the workflow definition
-	Status     ExecutionStatus        `json:"status"` // e.g., running, completed, failed, retrying
-	StepStates map[string]*StepState  `json:"step_states"`
-	CreatedAt  time.Time              `json:"created_at"`
-	UpdatedAt  time.Time              `json:"updated_at"`
+	ID         string                `json:"id"`
+	WorkflowID string                `json:"workflow_id"`
+	Workflow   *Workflow             `json:"workflow"` // New field to store the workflow definition
+	Status     ExecutionStatus       `json:"status"`   // e.g., running, completed, failed, retrying
+	StepStates map[string]*StepState `json:"step_states"`
+	CreatedAt  time.Time             `json:"created_at"`
+	UpdatedAt  time.Time             `json:"updated_at"`
 }
 
 // StepState represents the state of a single step in an execution.

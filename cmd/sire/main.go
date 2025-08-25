@@ -23,7 +23,7 @@ var executionCmd = &cobra.Command{
 	Long:  `Commands to list, view status, and manage workflow executions.`,
 }
 
-var dbPath // Global variable for DB path
+var dbPath string // Global variable for DB path
 
 // listCmd represents the list execution command
 var listCmd = &cobra.Command{
@@ -53,17 +53,26 @@ var listCmd = &cobra.Command{
 		}
 
 		w := tabwriter.NewWriter(os.Stdout, 0, 0, 3, ' ', 0)
-		fmt.Fprintln(w, "ID\tWORKFLOW ID\tSTATUS\tCREATED AT\tUPDATED AT")
+		if _, err := fmt.Fprintln(w, "ID\tWORKFLOW ID\tSTATUS\tCREATED AT\tUPDATED AT"); err != nil {
+			fmt.Printf("Error writing header: %v\n", err)
+			os.Exit(1)
+		}
 		for _, exec := range executions {
-			fmt.Fprintf(w, "%s\t%s\t%s\t%s\t%s\n",
+			if _, err := fmt.Fprintf(w, "%s\t%s\t%s\t%s\t%s\n",
 				exec.ID,
 				exec.WorkflowID,
 				exec.Status,
 				exec.CreatedAt.Format(time.RFC3339),
 				exec.UpdatedAt.Format(time.RFC3339),
-			)
+			); err != nil {
+				fmt.Printf("Error writing execution: %v\n", err)
+				os.Exit(1)
+			}
 		}
-		w.Flush()
+		if err := w.Flush(); err != nil {
+			fmt.Printf("Error flushing writer: %v\n", err)
+			os.Exit(1)
+		}
 	},
 }
 
@@ -99,20 +108,29 @@ var statusCmd = &cobra.Command{
 		fmt.Println("\nStep States:")
 
 		w := tabwriter.NewWriter(os.Stdout, 0, 0, 3, ' ', 0)
-		fmt.Fprintln(w, "STEP ID\tSTATUS\tATTEMPTS\tERROR")
+		if _, err := fmt.Fprintln(w, "STEP ID\tSTATUS\tATTEMPTS\tERROR"); err != nil {
+			fmt.Printf("Error writing header: %v\n", err)
+			os.Exit(1)
+		}
 		for stepID, stepState := range exec.StepStates {
 			errmsg := ""
 			if stepState.Error != "" {
 				errmsg = stepState.Error
 			}
-			fmt.Fprintf(w, "%s\t%s\t%d\t%s\n",
+			if _, err := fmt.Fprintf(w, "%s\t%s\t%d\t%s\n",
 				stepID,
 				stepState.Status,
 				stepState.Attempts,
 				errmsg,
-			)
+			); err != nil {
+				fmt.Printf("Error writing step state: %v\n", err)
+				os.Exit(1)
+			}
 		}
-		w.Flush()
+		if err := w.Flush(); err != nil {
+			fmt.Printf("Error flushing writer: %v\n", err)
+			os.Exit(1)
+		}
 	},
 }
 
