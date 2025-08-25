@@ -33,13 +33,15 @@ func TestRemoteDispatcher_Dispatch_Success(t *testing.T) {
 			ID:      req.ID,
 		}
 		w.Header().Set("Content-Type", "application/json")
-		json.NewEncoder(w).Encode(resp)
+		if err := json.NewEncoder(w).Encode(resp); err != nil { // Check error
+			http.Error(w, "Internal Server Error: "+err.Error(), http.StatusInternalServerError)
+		}
 	}))
 	defer ts.Close()
 
 	dispatcher := NewRemoteDispatcher()
 
-	toolURI := fmt.Sprintf("mcp:%s#math.add", ts.URL) // Extract host:port from ts.URL
+	toolURI := fmt.Sprintf("mcp:%s#math.add", ts.URL)
 	params := map[string]interface{}{
 		"a": 1,
 		"b": 2,
@@ -62,7 +64,9 @@ func TestRemoteDispatcher_Dispatch_RemoteError(t *testing.T) {
 			ID: 1,
 		}
 		w.Header().Set("Content-Type", "application/json")
-		json.NewEncoder(w).Encode(resp)
+		if err := json.NewEncoder(w).Encode(resp); err != nil { // Check error
+			http.Error(w, "Internal Server Error: "+err.Error(), http.StatusInternalServerError)
+		}
 	}))
 	defer ts.Close()
 

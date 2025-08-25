@@ -34,6 +34,20 @@ func GetInProcessServer() *InProcessServer {
 	return inProcessServerInstance
 }
 
+// ListRegisteredTools returns a list of all registered tool URIs.
+func (s *InProcessServer) ListRegisteredTools() []string {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+
+	var tools []string
+	for serviceName, methods := range s.services {
+		for methodName := range methods {
+			tools = append(tools, fmt.Sprintf("sire:local/%s.%s", serviceName, methodName))
+		}
+	}
+	return tools
+}
+
 // RegisterServiceMethod registers a service method with the in-process server.
 // The serviceName and methodName are extracted from the toolURI.
 // Example toolURI: sire:local/file.write

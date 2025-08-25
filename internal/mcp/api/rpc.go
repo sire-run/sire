@@ -25,8 +25,8 @@ func (s *MCPService) Initialize(r *http.Request, args *struct{}, reply *map[stri
 		"capabilities": map[string]interface{}{
 			"tools": []map[string]interface{}{
 				{
-					"name":        "sire/listNodes",
-					"description": "List available Sire nodes.",
+					"name":        "sire/listTools", // Changed from listNodes
+					"description": "List available Sire tools.",
 				},
 				{
 					"name":        "sire/createWorkflow",
@@ -49,8 +49,8 @@ func (s *MCPService) ToolExecute(r *http.Request, args *struct {
 	Params []map[string]interface{}
 }, reply *interface{}) error {
 	switch args.Name {
-	case "sire/listNodes":
-		*reply = s.toolProvider.ListNodes()
+	case "sire/listTools": // Changed from listNodes
+		*reply = s.toolProvider.ListTools()
 	case "sire/createWorkflow":
 		wf, err := s.toolProvider.CreateWorkflow(args.Params)
 		if err != nil {

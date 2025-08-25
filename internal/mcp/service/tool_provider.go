@@ -1,52 +1,64 @@
 package service
 
-import ()
+import (
+	"fmt"
+
+	"github.com/sire-run/sire/internal/core"
+	"github.com/sire-run/sire/internal/mcp/inprocess"
+)
 
 // ToolProvider provides the implementation for the MCP tools.
 type ToolProvider struct {
-	// sireAdapter *integration.SireAdapter // Temporarily commented out
 }
 
 // NewToolProvider creates a new ToolProvider.
 func NewToolProvider() *ToolProvider {
-	return &ToolProvider{
-		// sireAdapter: integration.NewSireAdapter(), // Temporarily commented out
-	}
+	return &ToolProvider{}
 }
 
-// ListNodes lists the available Sire nodes.
-/* // Temporarily commented out
-func (p *ToolProvider) ListNodes() []string {
-	return p.sireAdapter.GetNodeTypes()
+// ListTools lists the available Sire tools.
+func (p *ToolProvider) ListTools() []string {
+	server := inprocess.GetInProcessServer()
+	return server.ListRegisteredTools()
 }
-*/
 
-// CreateWorkflow creates a new Sire workflow.
-/* // Temporarily commented out
-func (p *ToolProvider) CreateWorkflow(steps []map[string]interface{}) (*core.Workflow, error) {
-	// This is a placeholder implementation.
-	// A real implementation would be more sophisticated.
-	nodes := make(map[string]core.NodeDefinition)
+// CreateWorkflow creates a new Sire workflow from a list of steps.
+// Each step in the input map should contain "id", "tool", and optionally "params".
+func (p *ToolProvider) CreateWorkflow(inputSteps []map[string]interface{}) (*core.Workflow, error) {
+	steps := make([]core.Step, len(inputSteps))
 	edges := []core.Edge{}
-	for i, step := range steps {
-		nodeID := fmt.Sprintf("node-%d", i)
-		nodes[nodeID] = core.NodeDefinition{
-			Type:   step["type"].(string),
-			Config: step["config"].(map[string]interface{}),
+
+	for i, inputStep := range inputSteps {
+		stepID, ok := inputStep["id"].(string)
+		if !ok {
+			return nil, fmt.Errorf("step %d: 'id' is required and must be a string", i)
 		}
+		toolURI, ok := inputStep["tool"].(string)
+		if !ok {
+			return nil, fmt.Errorf("step %d: 'tool' is required and must be a string", i)
+		}
+
+		params, _ := inputStep["params"].(map[string]interface{}) // params is optional
+
+		steps[i] = core.Step{
+			ID:     stepID,
+			Tool:   toolURI,
+			Params: params,
+		}
+
+		// For simplicity, create a linear workflow for now
 		if i > 0 {
 			edges = append(edges, core.Edge{
-				From: fmt.Sprintf("node-%d", i-1),
-				To:   nodeID,
+				From: inputSteps[i-1]["id"].(string),
+				To:   stepID,
 			})
 		}
 	}
 
 	return &core.Workflow{
-		ID:    "new-workflow",
-		Name:  "New Workflow",
-		Nodes: nodes,
+		ID:    "generated-workflow",
+		Name:  "Generated Workflow",
+		Steps: steps,
 		Edges: edges,
 	}, nil
 }
-*/

@@ -16,18 +16,18 @@ import (
 
 // JSONRPCRequest represents a JSON-RPC 2.0 request.
 type JSONRPCRequest struct {
-	JSONRPC string        `json:"jsonrpc"`
-	Method  string        `json:"method"`
-	Params  interface{}   `json:"params"`
-	ID      int           `json:"id"`
+	JSONRPC string      `json:"jsonrpc"`
+	Method  string      `json:"method"`
+	Params  interface{} `json:"params"`
+	ID      int         `json:"id"`
 }
 
 // JSONRPCResponse represents a JSON-RPC 2.0 response.
 type JSONRPCResponse struct {
-	JSONRPC string           `json:"jsonrpc"`
-	Result  json.RawMessage  `json:"result,omitempty"`
-	Error   *JSONRPCError    `json:"error,omitempty"`
-	ID      int              `json:"id"`
+	JSONRPC string          `json:"jsonrpc"`
+	Result  json.RawMessage `json:"result,omitempty"`
+	Error   *JSONRPCError   `json:"error,omitempty"`
+	ID      int             `json:"id"`
 }
 
 // JSONRPCError represents a JSON-RPC 2.0 error object.
@@ -82,7 +82,6 @@ func (d *RemoteDispatcher) Dispatch(ctx context.Context, toolURI string, params 
 	if toolName == "" {
 		return nil, fmt.Errorf("missing tool name (service.method) in tool URI: %s", toolURI)
 	}
-
 
 	reqBody := JSONRPCRequest{
 		JSONRPC: "2.0",

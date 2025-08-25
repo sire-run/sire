@@ -117,7 +117,7 @@ Modern development involves a multitude of tools and services, each with its own
 *   [x] T7.2 Add integration tests  Owner: Gemini  Est: 3h Completion Date: 2025-08-24
     *   [x] S7.2.1 Create a mock remote MCP server in the test suite. Completion Date: 2025-08-24
     *   [x] S7.2.2 Write integration tests that use the `core.Engine` to execute a workflow that calls the mock remote server. Completion Date: 2025-08-24
-*   [ ] T7.3 Run linter and formatter  Owner: TBD  Est: 30m
+*   [x] T7.3 Run linter and formatter  Owner: Gemini  Est: 30m Completion Date: 2025-08-24
 
 ### E8: Documentation and Examples
 

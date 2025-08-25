@@ -10,7 +10,7 @@ import (
 
 	"github.com/sire-run/sire/internal/core"
 	"github.com/sire-run/sire/internal/mcp/inprocess" // Import inprocess dispatcher
-	"github.com/sire-run/sire/internal/mcp/remote"   // Import remote dispatcher types
+	"github.com/sire-run/sire/internal/mcp/remote"    // Import remote dispatcher types
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -61,7 +61,6 @@ func (s *MockMCPService) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		callParams = make(map[string]interface{}) // Empty map if params is nil
 	}
 
-
 	handler, ok := s.methods[req.Method]
 	if !ok {
 		resp := remote.JSONRPCResponse{
@@ -70,11 +69,13 @@ func (s *MockMCPService) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 			ID:      req.ID,
 		}
 		w.Header().Set("Content-Type", "application/json")
-		json.NewEncoder(w).Encode(resp)
+		if err := json.NewEncoder(w).Encode(resp); err != nil { // Check error
+			http.Error(w, "Internal Server Error: "+err.Error(), http.StatusInternalServerError)
+		}
 		return
 	}
 
-	result, err := handler(callParams) // Use callParams here
+	result, err := handler(callParams)
 	if err != nil {
 		resp := remote.JSONRPCResponse{
 			JSONRPC: "2.0",
@@ -82,7 +83,9 @@ func (s *MockMCPService) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 			ID:      req.ID,
 		}
 		w.Header().Set("Content-Type", "application/json")
-		json.NewEncoder(w).Encode(resp)
+		if err := json.NewEncoder(w).Encode(resp); err != nil { // Check error
+			http.Error(w, "Internal Server Error: "+err.Error(), http.StatusInternalServerError)
+		}
 		return
 	}
 
@@ -99,7 +102,9 @@ func (s *MockMCPService) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		ID:      req.ID,
 	}
 	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(resp)
+	if err := json.NewEncoder(w).Encode(resp); err != nil { // Check error
+		http.Error(w, "Internal Server Error: "+err.Error(), http.StatusInternalServerError)
+	}
 }
 
 func TestEngine_RemoteToolExecution(t *testing.T) {
