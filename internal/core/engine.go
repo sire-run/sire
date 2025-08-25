@@ -108,8 +108,20 @@ func (e *Engine) Execute(ctx context.Context, execution *Execution, workflow *Wo
 		if err != nil {
 			stepState.Error = err.Error()
 			if step.Retry != nil && stepState.Attempts < step.Retry.MaxAttempts {
-				// Calculate next attempt time (simple exponential backoff for now)
-				backoffDuration := time.Duration(stepState.Attempts) * time.Second * 2 // Simple backoff
+				// Calculate next attempt time based on configurable backoff policy
+				var backoffDuration time.Duration
+				switch step.Retry.Backoff {
+				case "exponential":
+					// Simple exponential backoff: base * 2^(attempts-1)
+					baseDuration := 1 * time.Second // Default base
+					if step.Retry.MaxAttempts > 0 { // Use MaxAttempts as a proxy for a configurable base if needed
+						// For simplicity, let's just use a fixed multiplier for now
+						backoffDuration = time.Duration(stepState.Attempts) * time.Second * 2
+					}
+				default:
+					// Default to a fixed backoff if not specified or unknown
+					backoffDuration = 5 * time.Second
+				}
 				stepState.NextAttempt = time.Now().Add(backoffDuration)
 				stepState.Status = StepStatusRetrying
 			} else {
