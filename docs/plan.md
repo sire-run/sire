@@ -133,7 +133,7 @@ Modern development involves a multitude of tools and services, each with its own
     *   [x] S9.1.3 Add comprehensive unit tests for the storage service, mocking the database interface. Completion Date: 2025-08-24
 *   [ ] T9.2 Refactor the engine for stateful execution  Owner: TBD  Est: 6h
     *   Dependencies: T5.2
-    *   [ ] S9.2.1 Modify the `sire workflow run` CLI command to create a new execution record in the DB before starting.
+    *   [x] S9.2.1 Modify the `sire workflow run` CLI command to create a new execution record in the DB before starting. Completion Date: 2025-08-24
     *   [ ] S9.2.2 The `core.Engine` must load the execution state from storage at the beginning of a run.
     *   [ ] S9.2.3 After each step completes, the engine must atomically save the full execution state (including the step's output) before dispatching the next step.
     *   [ ] S9.2.4 Add integration tests to verify that stopping and restarting the orchestrator resumes an in-flight workflow.

@@ -5,9 +5,12 @@ import (
 	"encoding/json"
 	"fmt"
 	"os"
+	"time" // New import for time.Now()
+	"github.com/google/uuid" // New import for generating UUIDs
 
 	"github.com/sire-run/sire/internal/core"
-	"github.com/sire-run/sire/internal/mcp/inprocess" // New import
+	"github.com/sire-run/sire/internal/mcp/inprocess"
+	"github.com/sire-run/sire/internal/storage" // New import for storage
 	"github.com/spf13/cobra"
 	"gopkg.in/yaml.v3"
 )
@@ -15,6 +18,7 @@ import (
 var (
 	runFile   string
 	runInputs string
+	dbPath    string // New global variable for DB path
 )
 
 var runCmd = &cobra.Command{
@@ -44,18 +48,48 @@ var runCmd = &cobra.Command{
 			}
 		}
 
-		// 4. Execute workflow
-		// Instantiate the in-process dispatcher
-		dispatcher := inprocess.NewInProcessDispatcher()
-		engine := core.NewEngine(dispatcher)
+		// 4. Initialize storage
+		store, err := storage.NewBoltDBStore(dbPath)
+		if err != nil {
+			fmt.Printf("Error initializing database: %v\n", err)
+			os.Exit(1)
+		}
+		defer func() {
+			if err := store.Close(); err != nil {
+				fmt.Printf("Error closing database: %v\n", err)
+			}
+		}()
 
-		execution, err := engine.Execute(context.Background(), &workflow, inputs)
+		// 5. Create a new execution record
+		executionID := uuid.New().String()
+		execution := &core.Execution{
+			ID:         executionID,
+			WorkflowID: workflow.ID,
+			Status:     core.ExecutionStatusRunning,
+			StepStates: make(map[string]*core.StepState),
+			CreatedAt:  time.Now(),
+			UpdatedAt:  time.Now(),
+		}
+		if err := store.SaveExecution(execution); err != nil {
+			fmt.Printf("Error saving new execution: %v\n", err)
+			os.Exit(1)
+		}
+
+
+		// 6. Execute workflow
+		dispatcher := inprocess.NewInProcessDispatcher()
+		// The engine will now take the store as well (part of S9.2.2)
+		// For now, we'll just pass the dispatcher. The engine will be refactored later.
+		engine := core.NewEngine(dispatcher) // This line will change in S9.2.2
+
+		// Pass the initial execution to the engine
+		execution, err = engine.Execute(context.Background(), &workflow, inputs) // This line will change in S9.2.2
 		if err != nil {
 			fmt.Printf("Error executing workflow: %v\n", err)
 			os.Exit(1)
 		}
 
-		// 5. Print output
+		// 7. Print output
 		outputJSON, err := json.MarshalIndent(execution, "", "  ")
 		if err != nil {
 			fmt.Printf("Error marshalling execution output: %v\n", err)
@@ -73,4 +107,5 @@ func init() {
 		os.Exit(1)
 	}
 	runCmd.Flags().StringVarP(&runInputs, "inputs", "i", "", "JSON string of inputs to the workflow")
+	runCmd.Flags().StringVarP(&dbPath, "db-path", "d", "sire.db", "Path to the BoltDB file for state persistence") // New flag
 }
