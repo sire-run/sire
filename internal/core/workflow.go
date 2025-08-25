@@ -12,7 +12,7 @@ type Step struct {
 
 // RetryPolicy defines the retry behavior for a step.
 type RetryPolicy struct {
-	MaxAttempts int    `yaml:"max_attempts"`
+	MaxAttempts int    `yaml:"maxAttempts"`
 	Backoff     string `yaml:"backoff"` // e.g., "exponential"
 }
 
@@ -54,12 +54,12 @@ const (
 // Execution represents a single, durable run of a workflow.
 type Execution struct {
 	ID         string                `json:"id"`
-	WorkflowID string                `json:"workflow_id"`
+	WorkflowID string                `json:"workflowId"`
 	Workflow   *Workflow             `json:"workflow"` // New field to store the workflow definition
 	Status     ExecutionStatus       `json:"status"`   // e.g., running, completed, failed, retrying
-	StepStates map[string]*StepState `json:"step_states"`
-	CreatedAt  time.Time             `json:"created_at"`
-	UpdatedAt  time.Time             `json:"updated_at"`
+	StepStates map[string]*StepState `json:"stepStates"`
+	CreatedAt  time.Time             `json:"createdAt"`
+	UpdatedAt  time.Time             `json:"updatedAt"`
 }
 
 // StepState represents the state of a single step in an execution.
@@ -68,5 +68,5 @@ type StepState struct {
 	Output      map[string]interface{} `json:"output,omitempty"`
 	Error       string                 `json:"error,omitempty"`
 	Attempts    int                    `json:"attempts"`
-	NextAttempt time.Time              `json:"next_attempt,omitempty"` // For exponential backoff
+	NextAttempt time.Time              `json:"nextAttempt,omitempty"` // For exponential backoff
 }
