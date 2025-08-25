@@ -3,6 +3,7 @@ package core
 import (
 	"context"
 	"fmt"
+	"time" // New import
 )
 
 // Store defines the interface for storing and retrieving workflow executions.
@@ -60,8 +61,22 @@ func (e *Engine) Execute(ctx context.Context, execution *Execution, workflow *Wo
 	for _, stepID := range sortedSteps {
 		step := steps[stepID]
 
+		// Get current step state or create a new one
+		stepState, ok := execution.StepStates[stepID]
+		if !ok {
+			stepState = &StepState{
+				Status: StepStatusPending,
+			}
+			execution.StepStates[stepID] = stepState
+		}
+
 		// If step is already completed, skip it
-		if ss, ok := execution.StepStates[stepID]; ok && ss.Status == StepStatusCompleted {
+		if stepState.Status == StepStatusCompleted {
+			continue
+		}
+
+		// If step is retrying and NextAttempt is in the future, skip it for now
+		if stepState.Status == StepStatusRetrying && time.Now().Before(stepState.NextAttempt) {
 			continue
 		}
 
@@ -85,12 +100,21 @@ func (e *Engine) Execute(ctx context.Context, execution *Execution, workflow *Wo
 			}
 		}
 
+		// Increment attempt count
+		stepState.Attempts++
+		stepState.Status = StepStatusRunning // Mark as running before dispatch
+
 		output, err := e.dispatcher.Dispatch(ctx, step.Tool, stepInputs)
 		if err != nil {
-			execution.Status = ExecutionStatusFailed // Use the new enum
-			execution.StepStates[stepID] = &StepState{ // Assign pointer
-				Status: StepStatusFailed, // Use the new enum
-				Error:  err.Error(),
+			stepState.Error = err.Error()
+			if step.Retry != nil && stepState.Attempts < step.Retry.MaxAttempts {
+				// Calculate next attempt time (simple exponential backoff for now)
+				backoffDuration := time.Duration(stepState.Attempts) * time.Second * 2 // Simple backoff
+				stepState.NextAttempt = time.Now().Add(backoffDuration)
+				stepState.Status = StepStatusRetrying
+			} else {
+				stepState.Status = StepStatusFailed
+				execution.Status = ExecutionStatusFailed // Mark overall execution as failed
 			}
 			if e.store != nil {
 				_ = e.store.SaveExecution(execution) // Attempt to save state
@@ -99,10 +123,10 @@ func (e *Engine) Execute(ctx context.Context, execution *Execution, workflow *Wo
 		}
 		stepOutputs[stepID] = output
 
-		execution.StepStates[stepID] = &StepState{ // Assign pointer
-			Status: StepStatusCompleted, // Use the new enum
-			Output: output,
-		}
+		stepState.Status = StepStatusCompleted
+		stepState.Output = output
+		stepState.Error = "" // Clear error on success
+
 		// Save state after each step (S9.2.3)
 		if e.store != nil {
 			if err := e.store.SaveExecution(execution); err != nil {
