@@ -1,0 +1,30 @@
+id: federated-data-pipeline
+name: "Fetch data, process it locally, and upload"
+steps:
+  - id: fetch_data
+    tool: "mcp:http://api.third-party.com/rpc#data.fetch"
+    params:
+      source_id: "12345"
+    retry:
+      max_attempts: 5
+      backoff: "exponential"
+
+  - id: transform_data
+    tool: "sire:local/data.transform"
+    params:
+      operation: "map"
+      expression: "item.value * 2"
+      data: "{{ .fetch_data.output.records }}"
+
+  - id: upload_result
+    tool: "mcp:http://storage-service.internal/rpc#s3.upload"
+    params:
+      bucket: "processed-results"
+      key: "result-{{.workflow.id}}.json"
+      body: "{{ .transform_data.output.result }}"
+
+edges:
+  - from: fetch_data
+    to: transform_data
+  - from: transform_data
+    to: upload_result

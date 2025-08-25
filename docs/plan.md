@@ -122,7 +122,7 @@ Modern development involves a multitude of tools and services, each with its own
 ### E8: Documentation and Examples
 
 *   [x] T8.1 Rewrite the project `README.md`  Owner: Gemini  Est: 3h Completion Date: 2025-08-24
-*   [ ] T8.2 Create new example workflows  Owner: TBD  Est: 4h
+*   [x] T8.2 Create new example workflows  Owner: Gemini  Est: 4h Completion Date: 2025-08-24
 *   [ ] T8.3 Update `docs/design.md`  Owner: TBD  Est: 2h
 
 ### E9: Durable Execution and State Persistence
