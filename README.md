@@ -92,12 +92,52 @@ edges:
 
 ### Running a Workflow
 
-```bash
-# The sire binary is now stateful and requires a database file.
+## Core Principles
+
+*   **MCP-First Architecture:** The orchestrator is completely decoupled from the tools it executes. MCP is the universal contract.
+*   **Workflows as Code:** Workflows are defined in declarative YAML, designed to be version-controlled, reviewed, and edited as code.
+*   **Durable & Reliable:** With an embedded database, Sire guarantees that your workflows will run to completion, even if the orchestrator or the tools it calls restart or fail transiently.
+    *   **Durability Guarantees:** Sire persists the state of every workflow execution to a local BoltDB file after each step. If the Sire process crashes, it can automatically resume workflows from the last successfully completed step when restarted. This ensures at-least-once execution for all workflow steps.
+    *   **Retry Policies:** Workflow steps can define `retry` policies with `max_attempts` and `backoff` strategies (e.g., "exponential"). If a tool call fails, Sire will automatically retry the step according to the configured policy, preventing transient errors from failing the entire workflow.
+*   **High-Performance Orchestration:** The compiled Go core is designed to be a lean, low-latency dispatcher, ensuring your workflows run efficiently.
+
+## Getting Started
+
+### Prerequisites
+
+*   Go 1.25 or later.
+
+### Installation
+
+1.  Clone the repository:
+    ```bash
+    git clone https://github.com/sire-run/sire.git
+    cd sire
+    ```
+2.  Build the `sire` CLI:
+    ```bash
+    go build -o sire ./cmd/sire
+    ```
+
+### Running a Workflow
+
 ```bash
 # The sire binary is now stateful and requires a database file.
 ./sire --db-path sire.db workflow run -f my_workflow.yml
 ```
+
+### Managing Executions
+
+Sire provides CLI commands to inspect the state of your workflow executions:
+
+*   **List all executions:**
+    ```bash
+    ./sire --db-path sire.db execution list
+    ```
+*   **View status of a specific execution:**
+    ```bash
+    ./sire --db-path sire.db execution status <execution-id>
+    ```
 ```
 
 ## High-Level Roadmap
