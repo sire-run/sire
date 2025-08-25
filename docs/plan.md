@@ -139,7 +139,7 @@ Modern development involves a multitude of tools and services, each with its own
     *   [x] S9.2.4 Add integration tests to verify that stopping and restarting the orchestrator resumes an in-flight workflow. Completion Date: 2025-08-24
 *   [ ] T9.3 Implement retry and resumption logic  Owner: TBD  Est: 5h
     *   [x] S9.3.1 When a tool call fails with a transient error, the engine marks the step as `retrying` in the database. Completion Date: 2025-08-24
-    *   [ ] S9.3.2 Implement a background worker process that periodically scans the database for pending or retrying executions.
+    *   [x] S9.3.2 Implement a background worker process that periodically scans the database for pending or retrying executions. Completion Date: 2025-08-24
     *   [ ] S9.3.3 The background worker re-queues these executions for the engine to process.
     *   [ ] S9.3.4 Implement a configurable exponential backoff policy for retries within the workflow step definition.
     *   [ ] S9.3.5 Add unit tests for the retry logic.
