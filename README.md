@@ -3,7 +3,7 @@
 **A modern, high-performance workflow automation platform, written in Go.**
 
 [![Go Version](https://img.shields.io/badge/go-1.25-blue.svg)](https://golang.org/)
-[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+[![License](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](https://opensource.org/licenses/Apache-2.0)
 [![Build Status](https://img.shields.io/badge/build-passing-brightgreen.svg)](#)
 
 ---
@@ -106,4 +106,4 @@ We welcome contributions of all kinds! Whether it's a bug report, a new feature,
 
 ## License
 
-Sire is licensed under the [MIT License](LICENSE.md).
+Sire is licensed under the [Apache License 2.0](LICENSE.md).
