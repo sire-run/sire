@@ -109,11 +109,11 @@ Modern development involves a multitude of tools and services, each with its own
 
 ### E7: Remote Tool Execution
 
-*   [ ] T7.1 Implement the `mcp:` dispatcher  Owner: TBD  Est: 4h
-    *   [ ] S7.1.1 Create the `mcp:` dispatcher which acts as a remote MCP client.
-    *   [ ] S7.1.2 The dispatcher should parse the `mcp:` Tool URI to get the server URL and tool name.
-    *   [ ] S7.1.3 Add robust error handling for network failures and remote server errors.
-    *   [ ] S7.1.4 Implement a configurable timeout for all remote calls.
+*   [x] T7.1 Implement the `mcp:` dispatcher  Owner: Gemini  Est: 4h Completion Date: 2025-08-24
+    *   [x] S7.1.1 Create the `mcp:` dispatcher which acts as a remote MCP client. Completion Date: 2025-08-24
+    *   [x] S7.1.2 The dispatcher should parse the `mcp:` Tool URI to get the server URL and tool name. Completion Date: 2025-08-24
+    *   [x] S7.1.3 Add robust error handling for network failures and remote server errors. Completion Date: 2025-08-24
+    *   [x] S7.1.4 Implement a configurable timeout for all remote calls. Completion Date: 2025-08-24
 *   [ ] T7.2 Add integration tests  Owner: TBD  Est: 3h
     *   [ ] S7.2.1 Create a mock remote MCP server in the test suite.
     *   [ ] S7.2.2 Write integration tests that use the `core.Engine` to execute a workflow that calls the mock remote server.
