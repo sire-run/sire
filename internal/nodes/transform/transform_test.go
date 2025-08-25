@@ -2,11 +2,10 @@ package transform
 
 import (
 	"context"
+	"reflect"
 	"testing"
 
 	"github.com/sire-run/sire/internal/mcp/inprocess" // Import the inprocess package
-	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/require"
 )
 
 func TestTransform_Map(t *testing.T) {
@@ -19,9 +18,15 @@ func TestTransform_Map(t *testing.T) {
 	}
 
 	output, err := dispatcher.Dispatch(context.Background(), "sire:local/data.transform", params)
-	require.NoError(t, err)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
 
-	assert.Equal(t, []interface{}{2, 4, 6, 8}, output["result"])
+	expected := []interface{}{2, 4, 6, 8}
+	actual := output["result"]
+	if !reflect.DeepEqual(actual, expected) {
+		t.Errorf("expected %v, got %v", expected, actual)
+	}
 }
 
 func TestTransform_Filter(t *testing.T) {
@@ -34,9 +39,15 @@ func TestTransform_Filter(t *testing.T) {
 	}
 
 	output, err := dispatcher.Dispatch(context.Background(), "sire:local/data.transform", params)
-	require.NoError(t, err)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
 
-	assert.Equal(t, []interface{}{3, 4}, output["result"])
+	expected := []interface{}{3, 4}
+	actual := output["result"]
+	if !reflect.DeepEqual(actual, expected) {
+		t.Errorf("expected %v, got %v", expected, actual)
+	}
 }
 
 func TestTransform_Reduce(t *testing.T) {
@@ -50,7 +61,9 @@ func TestTransform_Reduce(t *testing.T) {
 	}
 
 	output, err := dispatcher.Dispatch(context.Background(), "sire:local/data.transform", params)
-	require.NoError(t, err)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
 
 	// Convert the actual result to float64 for comparison, as expr can return float64 for integer results.
 	actualResult, ok := output["result"].(float64)
@@ -63,5 +76,8 @@ func TestTransform_Reduce(t *testing.T) {
 		}
 	}
 
-	assert.Equal(t, float64(10), actualResult)
+	expected := float64(10)
+	if actualResult != expected {
+		t.Errorf("expected %v, got %v", expected, actualResult)
+	}
 }

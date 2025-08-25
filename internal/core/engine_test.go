@@ -3,11 +3,9 @@ package core
 import (
 	"context"
 	"fmt"
+	"strings"
 	"testing"
 	"time"
-
-	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/require"
 )
 
 // MockDispatcher is a mock implementation of the Dispatcher interface for testing.
@@ -100,13 +98,22 @@ func TestEngine_Execute_LinearWorkflow(t *testing.T) {
 
 	// 2. Execute
 	execResult, err := engine.Execute(context.Background(), execution, workflow, nil)
-
 	// 3. Assert
-	require.NoError(t, err)
-	assert.Equal(t, ExecutionStatusCompleted, execResult.Status)
-	assert.Equal(t, StepStatusCompleted, execResult.StepStates["node-1"].Status)
-	assert.Equal(t, StepStatusCompleted, execResult.StepStates["node-2"].Status)
-	assert.Equal(t, "hello world", execResult.StepStates["node-2"].Output["node2_output"])
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if execResult.Status != ExecutionStatusCompleted {
+		t.Errorf("expected status %q, got %q", ExecutionStatusCompleted, execResult.Status)
+	}
+	if execResult.StepStates["node-1"].Status != StepStatusCompleted {
+		t.Errorf("expected status %q, got %q", StepStatusCompleted, execResult.StepStates["node-1"].Status)
+	}
+	if execResult.StepStates["node-2"].Status != StepStatusCompleted {
+		t.Errorf("expected status %q, got %q", StepStatusCompleted, execResult.StepStates["node-2"].Status)
+	}
+	if execResult.StepStates["node-2"].Output["node2_output"] != "hello world" {
+		t.Errorf("expected output %q, got %q", "hello world", execResult.StepStates["node-2"].Output["node2_output"])
+	}
 }
 
 func TestEngine_Execute_FailingWorkflow(t *testing.T) {
@@ -141,10 +148,18 @@ func TestEngine_Execute_FailingWorkflow(t *testing.T) {
 	execResult, err := engine.Execute(context.Background(), execution, workflow, nil)
 
 	// 3. Assert
-	require.Error(t, err)
-	assert.Equal(t, ExecutionStatusFailed, execResult.Status)
-	assert.Equal(t, StepStatusFailed, execResult.StepStates["node-1"].Status)
-	assert.Equal(t, "something went wrong", execResult.StepStates["node-1"].Error)
+	if err == nil {
+		t.Fatalf("expected an error, got none")
+	}
+	if execResult.Status != ExecutionStatusFailed {
+		t.Errorf("expected status %q, got %q", ExecutionStatusFailed, execResult.Status)
+	}
+	if execResult.StepStates["node-1"].Status != StepStatusFailed {
+		t.Errorf("expected status %q, got %q", StepStatusFailed, execResult.StepStates["node-1"].Status)
+	}
+	if execResult.StepStates["node-1"].Error != "something went wrong" {
+		t.Errorf("expected error %q, got %q", "something went wrong", execResult.StepStates["node-1"].Error)
+	}
 }
 
 func TestTopologicalSort(t *testing.T) {
@@ -160,8 +175,12 @@ func TestTopologicalSort(t *testing.T) {
 		}
 
 		sorted, err := topologicalSort(steps, edges)
-		require.NoError(t, err)
-		assert.Equal(t, []string{"node-1", "node-2", "node-3"}, sorted)
+		if err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+		if len(sorted) != 3 || sorted[0] != "node-1" || sorted[1] != "node-2" || sorted[2] != "node-3" {
+			t.Errorf("expected sorted %v, got %v", []string{"node-1", "node-2", "node-3"}, sorted)
+		}
 	})
 
 	t.Run("workflow with a branch", func(t *testing.T) {
@@ -179,11 +198,19 @@ func TestTopologicalSort(t *testing.T) {
 		}
 
 		sorted, err := topologicalSort(steps, edges)
-		require.NoError(t, err)
+		if err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
 		// The exact order of node-2 and node-3 can vary, so we check for both possibilities.
-		assert.True(t, (sorted[1] == "node-2" && sorted[2] == "node-3") || (sorted[1] == "node-3" && sorted[2] == "node-2"))
-		assert.Equal(t, "node-1", sorted[0])
-		assert.Equal(t, "node-4", sorted[3])
+		if !(sorted[1] == "node-2" && sorted[2] == "node-3") && !(sorted[1] == "node-3" && sorted[2] == "node-2") { //nolint:all "Ignoring De Morgan's law suggestion as current form is clear and linter is overly aggressive"
+			t.Errorf("expected sorted order of node-2 and node-3 to be flexible, got %v", sorted)
+		}
+		if sorted[0] != "node-1" {
+			t.Errorf("expected first node to be %q, got %q", "node-1", sorted[0])
+		}
+		if sorted[3] != "node-4" {
+			t.Errorf("expected last node to be %q, got %q", "node-4", sorted[3])
+		}
 	})
 
 	t.Run("workflow with a cycle", func(t *testing.T) {
@@ -199,8 +226,12 @@ func TestTopologicalSort(t *testing.T) {
 		}
 
 		_, err := topologicalSort(steps, edges)
-		require.Error(t, err)
-		assert.Contains(t, err.Error(), "workflow has a cycle")
+		if err == nil {
+			t.Fatalf("expected an error, got none")
+		}
+		if !strings.Contains(err.Error(), "workflow has a cycle") {
+			t.Errorf("expected error to contain %q, got %q", "workflow has a cycle", err.Error())
+		}
 	})
 }
 
@@ -256,15 +287,28 @@ func TestEngine_Execute_BranchingWorkflow(t *testing.T) {
 
 	// 2. Execute
 	execResult, err := engine.Execute(context.Background(), execution, workflow, nil)
-
 	// 3. Assert
-	require.NoError(t, err)
-	assert.Equal(t, ExecutionStatusCompleted, execResult.Status)
-	assert.Equal(t, StepStatusCompleted, execResult.StepStates["node-1"].Status)
-	assert.Equal(t, StepStatusCompleted, execResult.StepStates["node-2"].Status)
-	assert.Equal(t, StepStatusCompleted, execResult.StepStates["node-3"].Status)
-	assert.Equal(t, StepStatusCompleted, execResult.StepStates["node-4"].Status)
-	assert.Equal(t, "hello from node2 | hello from node3", execResult.StepStates["node-4"].Output["node4_output"])
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if execResult.Status != ExecutionStatusCompleted {
+		t.Errorf("expected status %q, got %q", ExecutionStatusCompleted, execResult.Status)
+	}
+	if execResult.StepStates["node-1"].Status != StepStatusCompleted {
+		t.Errorf("expected status %q, got %q", StepStatusCompleted, execResult.StepStates["node-1"].Status)
+	}
+	if execResult.StepStates["node-2"].Status != StepStatusCompleted {
+		t.Errorf("expected status %q, got %q", StepStatusCompleted, execResult.StepStates["node-2"].Status)
+	}
+	if execResult.StepStates["node-3"].Status != StepStatusCompleted {
+		t.Errorf("expected status %q, got %q", StepStatusCompleted, execResult.StepStates["node-3"].Status)
+	}
+	if execResult.StepStates["node-4"].Status != StepStatusCompleted {
+		t.Errorf("expected status %q, got %q", StepStatusCompleted, execResult.StepStates["node-4"].Status)
+	}
+	if execResult.StepStates["node-4"].Output["node4_output"] != "hello from node2 | hello from node3" {
+		t.Errorf("expected output %q, got %q", "hello from node2 | hello from node3", execResult.StepStates["node-4"].Output["node4_output"])
+	}
 }
 
 func TestEngine_Execute_WithCycle(t *testing.T) {
@@ -300,8 +344,12 @@ func TestEngine_Execute_WithCycle(t *testing.T) {
 	_, err := engine.Execute(context.Background(), execution, workflow, nil)
 
 	// 3. Assert
-	require.Error(t, err)
-	assert.Contains(t, err.Error(), "workflow has a cycle")
+	if err == nil {
+		t.Fatalf("expected an error, got none")
+	}
+	if !strings.Contains(err.Error(), "workflow has a cycle") {
+		t.Errorf("expected error to contain %q, got %q", "workflow has a cycle", err.Error())
+	}
 }
 
 func TestEngine_RetryLogic(t *testing.T) {
@@ -347,37 +395,75 @@ func TestEngine_RetryLogic(t *testing.T) {
 
 	// First execution attempt (should fail and retry)
 	execResult, err := engine.Execute(context.Background(), execution, workflow, nil)
-	require.Error(t, err)
-	assert.Equal(t, ExecutionStatusRunning, execResult.Status) // Workflow still running as step is retrying
-	assert.Equal(t, StepStatusRetrying, execResult.StepStates["flaky_step"].Status)
-	assert.Equal(t, 1, execResult.StepStates["flaky_step"].Attempts)
-	assert.Contains(t, execResult.StepStates["flaky_step"].Error, "simulated transient error on attempt 1")
-	assert.False(t, execResult.StepStates["flaky_step"].NextAttempt.IsZero())
+	if err == nil {
+		t.Fatalf("expected an error, got none")
+	}
+	if execResult.Status != ExecutionStatusRunning { // Workflow still running as step is retrying
+		t.Errorf("expected status %q, got %q", ExecutionStatusRunning, execResult.Status)
+	}
+	if execResult.StepStates["flaky_step"].Status != StepStatusRetrying {
+		t.Errorf("expected status %q, got %q", StepStatusRetrying, execResult.StepStates["flaky_step"].Status)
+	}
+	if execResult.StepStates["flaky_step"].Attempts != 1 {
+		t.Errorf("expected attempts %d, got %d", 1, execResult.StepStates["flaky_step"].Attempts)
+	}
+	if !strings.Contains(execResult.StepStates["flaky_step"].Error, "simulated transient error on attempt 1") {
+		t.Errorf("expected error to contain %q, got %q", "simulated transient error on attempt 1", execResult.StepStates["flaky_step"].Error)
+	}
+	if execResult.StepStates["flaky_step"].NextAttempt.IsZero() {
+		t.Errorf("expected NextAttempt to not be zero")
+	}
 
 	// Force NextAttempt to be in the past for the next run
 	execResult.StepStates["flaky_step"].NextAttempt = time.Time{} // Set to zero value
 
 	// Second execution attempt (should fail and retry again)
 	execResult, err = engine.Execute(context.Background(), execResult, workflow, nil) // Pass previous state
-	require.Error(t, err)
-	assert.Equal(t, ExecutionStatusRunning, execResult.Status)
-	assert.Equal(t, StepStatusRetrying, execResult.StepStates["flaky_step"].Status)
-	assert.Equal(t, 2, execResult.StepStates["flaky_step"].Attempts)
-	assert.Contains(t, execResult.StepStates["flaky_step"].Error, "simulated transient error on attempt 2")
-	assert.False(t, execResult.StepStates["flaky_step"].NextAttempt.IsZero())
+	if err == nil {
+		t.Fatalf("expected an error, got none")
+	}
+	if execResult.Status != ExecutionStatusRunning {
+		t.Errorf("expected status %q, got %q", ExecutionStatusRunning, execResult.Status)
+	}
+	if execResult.StepStates["flaky_step"].Status != StepStatusRetrying {
+		t.Errorf("expected status %q, got %q", StepStatusRetrying, execResult.StepStates["flaky_step"].Status)
+	}
+	if execResult.StepStates["flaky_step"].Attempts != 2 {
+		t.Errorf("expected attempts %d, got %d", 2, execResult.StepStates["flaky_step"].Attempts)
+	}
+	if !strings.Contains(execResult.StepStates["flaky_step"].Error, "simulated transient error on attempt 2") {
+		t.Errorf("expected error to contain %q, got %q", "simulated transient error on attempt 2", execResult.StepStates["flaky_step"].Error)
+	}
+	if execResult.StepStates["flaky_step"].NextAttempt.IsZero() {
+		t.Errorf("expected NextAttempt to not be zero")
+	}
 
 	// Force NextAttempt to be in the past for the next run
 	execResult.StepStates["flaky_step"].NextAttempt = time.Time{} // Set to zero value
 
 	// Third execution attempt (should succeed)
 	execResult, err = engine.Execute(context.Background(), execResult, workflow, nil) // Pass previous state
-	require.NoError(t, err)
-	assert.Equal(t, ExecutionStatusCompleted, execResult.Status)
-	assert.Equal(t, StepStatusCompleted, execResult.StepStates["flaky_step"].Status)
-	assert.Equal(t, 3, execResult.StepStates["flaky_step"].Attempts) // Attempts count should still be 3
-	assert.Equal(t, "success", execResult.StepStates["flaky_step"].Output["result"])
-	assert.Empty(t, execResult.StepStates["flaky_step"].Error)
-	assert.True(t, execResult.StepStates["flaky_step"].NextAttempt.IsZero()) // NextAttempt should be zeroed on success
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if execResult.Status != ExecutionStatusCompleted {
+		t.Errorf("expected status %q, got %q", ExecutionStatusCompleted, execResult.Status)
+	}
+	if execResult.StepStates["flaky_step"].Status != StepStatusCompleted {
+		t.Errorf("expected status %q, got %q", StepStatusCompleted, execResult.StepStates["flaky_step"].Status)
+	}
+	if execResult.StepStates["flaky_step"].Attempts != 3 { // Attempts count should still be 3
+		t.Errorf("expected attempts %d, got %d", 3, execResult.StepStates["flaky_step"].Attempts)
+	}
+	if execResult.StepStates["flaky_step"].Output["result"] != "success" {
+		t.Errorf("expected output %q, got %q", "success", execResult.StepStates["flaky_step"].Output["result"])
+	}
+	if execResult.StepStates["flaky_step"].Error != "" {
+		t.Errorf("expected empty error, got %q", execResult.StepStates["flaky_step"].Error)
+	}
+	if !execResult.StepStates["flaky_step"].NextAttempt.IsZero() { // NextAttempt should be zeroed on success
+		t.Errorf("expected NextAttempt to be zero")
+	}
 
 	// Test exceeding MaxAttempts
 	attemptCount = 0 // Reset attempt count for new test
@@ -405,9 +491,19 @@ func TestEngine_RetryLogic(t *testing.T) {
 	}
 
 	execResultFailed, err := engine.Execute(context.Background(), executionFailed, workflowFailed, nil)
-	require.Error(t, err)
-	assert.Equal(t, ExecutionStatusFailed, execResultFailed.Status) // Workflow should be failed
-	assert.Equal(t, StepStatusFailed, execResultFailed.StepStates["flaky_step_failed"].Status)
-	assert.Equal(t, 1, execResultFailed.StepStates["flaky_step_failed"].Attempts)
-	assert.Contains(t, execResultFailed.StepStates["flaky_step_failed"].Error, "simulated transient error on attempt 1")
+	if err == nil {
+		t.Fatalf("expected an error, got none")
+	}
+	if execResultFailed.Status != ExecutionStatusFailed { // Workflow should be failed
+		t.Errorf("expected status %q, got %q", ExecutionStatusFailed, execResultFailed.Status)
+	}
+	if execResultFailed.StepStates["flaky_step_failed"].Status != StepStatusFailed {
+		t.Errorf("expected status %q, got %q", StepStatusFailed, execResultFailed.StepStates["flaky_step_failed"].Status)
+	}
+	if execResultFailed.StepStates["flaky_step_failed"].Attempts != 1 {
+		t.Errorf("expected attempts %d, got %d", 1, execResultFailed.StepStates["flaky_step_failed"].Attempts)
+	}
+	if !strings.Contains(execResultFailed.StepStates["flaky_step_failed"].Error, "simulated transient error on attempt 1") {
+		t.Errorf("expected error to contain %q, got %q", "simulated transient error on attempt 1", execResultFailed.StepStates["flaky_step_failed"].Error)
+	}
 }

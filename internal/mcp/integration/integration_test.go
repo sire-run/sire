@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"os" // New import for os.CreateTemp
+	"strings"
 	"testing"
 	"time" // New import for time.Now()
 
@@ -14,8 +15,6 @@ import (
 	"github.com/sire-run/sire/internal/mcp/inprocess" // Import inprocess dispatcher
 	"github.com/sire-run/sire/internal/mcp/remote"    // Import remote dispatcher types
 	"github.com/sire-run/sire/internal/storage"       // New import for storage
-	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/require"
 )
 
 // MockMCPService represents a mock MCP service that can handle RPC calls.
@@ -171,10 +170,18 @@ func TestEngine_RemoteToolExecution(t *testing.T) {
 	}
 
 	execResult, err := engine.Execute(context.Background(), execution, workflow, nil)
-	require.NoError(t, err)
-	assert.Equal(t, core.ExecutionStatusCompleted, execResult.Status)
-	assert.Equal(t, core.StepStatusCompleted, execResult.StepStates["add_numbers"].Status)
-	assert.Equal(t, float64(30), execResult.StepStates["add_numbers"].Output["sum"])
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if execResult.Status != core.ExecutionStatusCompleted {
+		t.Errorf("expected status %q, got %q", core.ExecutionStatusCompleted, execResult.Status)
+	}
+	if execResult.StepStates["add_numbers"].Status != core.StepStatusCompleted {
+		t.Errorf("expected status %q, got %q", core.StepStatusCompleted, execResult.StepStates["add_numbers"].Status)
+	}
+	if execResult.StepStates["add_numbers"].Output["sum"] != float64(30) {
+		t.Errorf("expected sum %v, got %v", float64(30), execResult.StepStates["add_numbers"].Output["sum"])
+	}
 
 	// Test a workflow with a remote tool that returns an error
 	mockService.RegisterMethod("math.divide", func(params map[string]interface{}) (interface{}, error) {
@@ -213,23 +220,45 @@ func TestEngine_RemoteToolExecution(t *testing.T) {
 	}
 
 	execResultWithError, err := engine.Execute(context.Background(), executionWithError, workflowWithError, nil)
-	require.Error(t, err)
-	assert.Equal(t, core.ExecutionStatusFailed, execResultWithError.Status)
-	assert.Equal(t, core.StepStatusFailed, execResultWithError.StepStates["divide_by_zero"].Status)
-	assert.Contains(t, execResultWithError.StepStates["divide_by_zero"].Error, "remote tool error (code -32000): division by zero")
+	if err == nil {
+		t.Fatalf("expected an error, got none")
+	}
+	if execResultWithError.Status != core.ExecutionStatusFailed {
+		t.Errorf("expected status %q, got %q", core.ExecutionStatusFailed, execResultWithError.Status)
+	}
+	if execResultWithError.StepStates["divide_by_zero"].Status != core.StepStatusFailed {
+		t.Errorf("expected status %q, got %q", core.StepStatusFailed, execResultWithError.StepStates["divide_by_zero"].Status)
+	}
+	if !strings.Contains(execResultWithError.StepStates["divide_by_zero"].Error, "remote tool error (code -32000): division by zero") {
+		t.Errorf("expected error to contain %q, got %q", "remote tool error (code -32000): division by zero", execResultWithError.StepStates["divide_by_zero"].Error)
+	}
 }
 
 func TestEngine_ResumeWorkflow(t *testing.T) {
 	// Create a temporary BoltDB file
 	tmpfile, err := os.CreateTemp("", "test-boltdb-resume-*.db")
-	require.NoError(t, err)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
 	dbPath := tmpfile.Name()
-	require.NoError(t, tmpfile.Close()) // Close the file so BoltDB can open it
-	defer func() { assert.NoError(t, os.Remove(dbPath)) }()
+	if err := tmpfile.Close(); err != nil { // Close the file so BoltDB can open it
+		t.Fatalf("unexpected error: %v", err)
+	}
+	defer func() {
+		if err := os.Remove(dbPath); err != nil {
+			t.Errorf("failed to remove temporary DB file: %v", err)
+		}
+	}()
 
 	store, err := storage.NewBoltDBStore(dbPath)
-	require.NoError(t, err)
-	defer func() { assert.NoError(t, store.Close()) }()
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	defer func() {
+		if err := store.Close(); err != nil {
+			t.Errorf("failed to close store: %v", err)
+		}
+	}()
 
 	// Mock dispatcher that fails on the second step initially
 	mockDispatcher := &MockDispatcher{
@@ -282,19 +311,39 @@ func TestEngine_ResumeWorkflow(t *testing.T) {
 
 	// Execute the workflow for the first time
 	execResult, err := engine.Execute(context.Background(), execution, workflow, nil)
-	require.Error(t, err)
-	assert.Equal(t, core.ExecutionStatusFailed, execResult.Status)
-	assert.Equal(t, core.StepStatusCompleted, execResult.StepStates["step1"].Status)
-	assert.Equal(t, core.StepStatusFailed, execResult.StepStates["step2"].Status)
-	assert.Contains(t, execResult.StepStates["step2"].Error, "simulated failure for step2")
-	assert.Nil(t, execResult.StepStates["step3"]) // step3 should not have run
+	if err == nil {
+		t.Fatalf("expected an error, got none")
+	}
+	if execResult.Status != core.ExecutionStatusFailed {
+		t.Errorf("expected status %q, got %q", core.ExecutionStatusFailed, execResult.Status)
+	}
+	if execResult.StepStates["step1"].Status != core.StepStatusCompleted {
+		t.Errorf("expected status %q, got %q", core.StepStatusCompleted, execResult.StepStates["step1"].Status)
+	}
+	if execResult.StepStates["step2"].Status != core.StepStatusFailed {
+		t.Errorf("expected status %q, got %q", core.StepStatusFailed, execResult.StepStates["step2"].Status)
+	}
+	if !strings.Contains(execResult.StepStates["step2"].Error, "simulated failure for step2") {
+		t.Errorf("expected error to contain %q, got %q", "simulated failure for step2", execResult.StepStates["step2"].Error)
+	}
+	if execResult.StepStates["step3"] != nil {
+		t.Errorf("expected step3 to be nil, got %v", execResult.StepStates["step3"])
+	}
 
 	// Simulate orchestrator restart: Load execution from DB
 	loadedExec, err := store.LoadExecution("exec-resume-1")
-	require.NoError(t, err)
-	assert.Equal(t, core.ExecutionStatusFailed, loadedExec.Status) // Still failed from previous run
-	assert.Equal(t, core.StepStatusCompleted, loadedExec.StepStates["step1"].Status)
-	assert.Equal(t, core.StepStatusFailed, loadedExec.StepStates["step2"].Status)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if loadedExec.Status != core.ExecutionStatusFailed {
+		t.Errorf("expected status %q, got %q", core.ExecutionStatusFailed, loadedExec.Status)
+	}
+	if loadedExec.StepStates["step1"].Status != core.StepStatusCompleted {
+		t.Errorf("expected status %q, got %q", core.StepStatusCompleted, loadedExec.StepStates["step1"].Status)
+	}
+	if loadedExec.StepStates["step2"].Status != core.StepStatusFailed {
+		t.Errorf("expected status %q, got %q", core.StepStatusFailed, loadedExec.StepStates["step2"].Status)
+	}
 
 	// Modify the workflow to allow step2 to succeed on resume
 	workflow.Steps[1].Params["allow_step2_success"] = true
@@ -302,10 +351,22 @@ func TestEngine_ResumeWorkflow(t *testing.T) {
 	// Re-execute the workflow with the loaded execution state
 	// The engine should resume from step2
 	resumedExecResult, err := engine.Execute(context.Background(), loadedExec, workflow, nil)
-	require.NoError(t, err)
-	assert.Equal(t, core.ExecutionStatusCompleted, resumedExecResult.Status)
-	assert.Equal(t, core.StepStatusCompleted, resumedExecResult.StepStates["step1"].Status)
-	assert.Equal(t, core.StepStatusCompleted, resumedExecResult.StepStates["step2"].Status)
-	assert.Equal(t, core.StepStatusCompleted, resumedExecResult.StepStates["step3"].Status)
-	assert.Equal(t, "hello world!", resumedExecResult.StepStates["step3"].Output["output3"])
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if resumedExecResult.Status != core.ExecutionStatusCompleted {
+		t.Errorf("expected status %q, got %q", core.ExecutionStatusCompleted, resumedExecResult.Status)
+	}
+	if resumedExecResult.StepStates["step1"].Status != core.StepStatusCompleted {
+		t.Errorf("expected status %q, got %q", core.StepStatusCompleted, resumedExecResult.StepStates["step1"].Status)
+	}
+	if resumedExecResult.StepStates["step2"].Status != core.StepStatusCompleted {
+		t.Errorf("expected status %q, got %q", core.StepStatusCompleted, resumedExecResult.StepStates["step2"].Status)
+	}
+	if resumedExecResult.StepStates["step3"].Status != core.StepStatusCompleted {
+		t.Errorf("expected status %q, got %q", core.StepStatusCompleted, resumedExecResult.StepStates["step3"].Status)
+	}
+	if resumedExecResult.StepStates["step3"].Output["output3"] != "hello world!" {
+		t.Errorf("expected output %q, got %q", "hello world!", resumedExecResult.StepStates["step3"].Output["output3"])
+	}
 }

@@ -6,20 +6,28 @@ import (
 	"testing"
 
 	"github.com/sire-run/sire/internal/mcp/inprocess" // Import the inprocess package
-	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/require"
 )
 
 func TestFileRead(t *testing.T) {
 	// Create a temporary file with content
 	tmpfile, err := os.CreateTemp("", "test-read-*.txt")
-	require.NoError(t, err)
-	defer func() { assert.NoError(t, os.Remove(tmpfile.Name())) }() // clean up
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	defer func() {
+		if err := os.Remove(tmpfile.Name()); err != nil {
+			t.Errorf("unexpected error: %v", err)
+		}
+	}() // clean up
 
 	content := "hello world"
 	_, err = tmpfile.Write([]byte(content))
-	require.NoError(t, err)
-	require.NoError(t, tmpfile.Close())
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if err := tmpfile.Close(); err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
 
 	dispatcher := inprocess.NewInProcessDispatcher()
 
@@ -28,17 +36,29 @@ func TestFileRead(t *testing.T) {
 	}
 
 	output, err := dispatcher.Dispatch(context.Background(), "sire:local/file.read", params)
-	require.NoError(t, err)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
 
-	assert.Equal(t, content, output["content"])
+	if output["content"] != content {
+		t.Errorf("expected content %q, got %q", content, output["content"])
+	}
 }
 
 func TestFileWrite(t *testing.T) {
 	// Create a temporary file path
 	tmpfile, err := os.CreateTemp("", "test-write-*.txt")
-	require.NoError(t, err)
-	require.NoError(t, tmpfile.Close()) // close it, we just need the name
-	defer func() { assert.NoError(t, os.Remove(tmpfile.Name())) }()
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if err := tmpfile.Close(); err != nil { // close it, we just need the name
+		t.Fatalf("unexpected error: %v", err)
+	}
+	defer func() {
+		if err := os.Remove(tmpfile.Name()); err != nil {
+			t.Errorf("unexpected error: %v", err)
+		}
+	}()
 
 	dispatcher := inprocess.NewInProcessDispatcher()
 
@@ -48,10 +68,16 @@ func TestFileWrite(t *testing.T) {
 	}
 
 	_, err = dispatcher.Dispatch(context.Background(), "sire:local/file.write", params)
-	require.NoError(t, err)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
 
 	// Verify content
 	data, err := os.ReadFile(tmpfile.Name())
-	require.NoError(t, err)
-	assert.Equal(t, "hello from test", string(data))
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if string(data) != "hello from test" {
+		t.Errorf("expected content %q, got %q", "hello from test", string(data))
+	}
 }

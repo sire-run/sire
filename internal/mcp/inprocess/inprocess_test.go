@@ -3,10 +3,8 @@ package inprocess
 import (
 	"context"
 	"fmt"
+	"strings"
 	"testing"
-
-	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/require"
 )
 
 func TestInProcessServer_RegisterAndDispatch(t *testing.T) {
@@ -20,41 +18,67 @@ func TestInProcessServer_RegisterAndDispatch(t *testing.T) {
 		}
 		return map[string]interface{}{"message": "Hello, " + name}, nil
 	})
-	require.NoError(t, err)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
 
 	// Test duplicate registration
 	err = server.RegisterServiceMethod("sire:local/test.hello", func(ctx context.Context, params map[string]interface{}) (map[string]interface{}, error) {
 		return nil, nil
 	})
-	require.Error(t, err)
-	assert.Contains(t, err.Error(), "service method sire:local/test.hello already registered")
+	if err == nil {
+		t.Fatalf("expected an error, got none")
+	}
+	if !strings.Contains(err.Error(), "service method sire:local/test.hello already registered") {
+		t.Errorf("expected error to contain %q, got %q", "service method sire:local/test.hello already registered", err.Error())
+	}
 
 	dispatcher := NewInProcessDispatcher()
 
 	// Test successful dispatch
 	output, err := dispatcher.Dispatch(context.Background(), "sire:local/test.hello", map[string]interface{}{"name": "World"})
-	require.NoError(t, err)
-	assert.Equal(t, "Hello, World", output["message"])
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if output["message"] != "Hello, World" {
+		t.Errorf("expected message %q, got %q", "Hello, World", output["message"])
+	}
 
 	// Test dispatch to non-existent method
 	_, err = dispatcher.Dispatch(context.Background(), "sire:local/test.nonexistent", nil)
-	require.Error(t, err)
-	assert.Contains(t, err.Error(), "method \"nonexistent\" not found in service \"test\"")
+	if err == nil {
+		t.Fatalf("expected an error, got none")
+	}
+	if !strings.Contains(err.Error(), "method \"nonexistent\" not found in service \"test\"") {
+		t.Errorf("expected error to contain %q, got %q", "method \"nonexistent\" not found in service \"test\"", err.Error())
+	}
 
 	// Test dispatch to non-existent service
 	_, err = dispatcher.Dispatch(context.Background(), "sire:local/nonexistent.method", nil)
-	require.Error(t, err)
-	assert.Contains(t, err.Error(), "service \"nonexistent\" not found")
+	if err == nil {
+		t.Fatalf("expected an error, got none")
+	}
+	if !strings.Contains(err.Error(), "service \"nonexistent\" not found") {
+		t.Errorf("expected error to contain %q, got %q", "service \"nonexistent\" not found", err.Error())
+	}
 
 	// Test invalid tool URI format
 	_, err = dispatcher.Dispatch(context.Background(), "sire:local/invalid", nil)
-	require.Error(t, err)
-	assert.Contains(t, err.Error(), "invalid sire:local tool URI format")
+	if err == nil {
+		t.Fatalf("expected an error, got none")
+	}
+	if !strings.Contains(err.Error(), "invalid sire:local tool URI format") {
+		t.Errorf("expected error to contain %q, got %q", "invalid sire:local tool URI format", err.Error())
+	}
 
 	// Test unsupported scheme
 	_, err = dispatcher.Dispatch(context.Background(), "http://example.com/test.hello", nil)
-	require.Error(t, err)
-	assert.Contains(t, err.Error(), "unsupported scheme for in-process dispatcher: http")
+	if err == nil {
+		t.Fatalf("expected an error, got none")
+	}
+	if !strings.Contains(err.Error(), "unsupported scheme for in-process dispatcher: http") {
+		t.Errorf("expected error to contain %q, got %q", "unsupported scheme for in-process dispatcher: http", err.Error())
+	}
 }
 
 func TestInProcessServer_RegisterUnsupportedScheme(t *testing.T) {
@@ -62,8 +86,12 @@ func TestInProcessServer_RegisterUnsupportedScheme(t *testing.T) {
 	err := server.RegisterServiceMethod("http://example.com/test.hello", func(ctx context.Context, params map[string]interface{}) (map[string]interface{}, error) {
 		return nil, nil
 	})
-	require.Error(t, err)
-	assert.Contains(t, err.Error(), "unsupported scheme for in-process server: http")
+	if err == nil {
+		t.Fatalf("expected an error, got none")
+	}
+	if !strings.Contains(err.Error(), "unsupported scheme for in-process server: http") {
+		t.Errorf("expected error to contain %q, got %q", "unsupported scheme for in-process server: http", err.Error())
+	}
 }
 
 func TestInProcessServer_RegisterInvalidURI(t *testing.T) {
@@ -71,6 +99,10 @@ func TestInProcessServer_RegisterInvalidURI(t *testing.T) {
 	err := server.RegisterServiceMethod("invalid-uri", func(ctx context.Context, params map[string]interface{}) (map[string]interface{}, error) {
 		return nil, nil
 	})
-	require.Error(t, err)
-	assert.Contains(t, err.Error(), "unsupported scheme for in-process server: ")
+	if err == nil {
+		t.Fatalf("expected an error, got none")
+	}
+	if !strings.Contains(err.Error(), "unsupported scheme for in-process server: ") {
+		t.Errorf("expected error to contain %q, got %q", "unsupported scheme for in-process server: ", err.Error())
+	}
 }

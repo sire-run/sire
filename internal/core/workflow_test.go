@@ -3,8 +3,6 @@ package core
 import (
 	"testing"
 
-	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/require"
 	"gopkg.in/yaml.v3"
 )
 
@@ -31,22 +29,52 @@ edges:
 `
 	var wf Workflow
 	err := yaml.Unmarshal([]byte(yamlData), &wf)
-	require.NoError(t, err)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
 
-	assert.Equal(t, "my-workflow", wf.ID)
-	assert.Equal(t, "My Test Workflow", wf.Name)
-	require.Len(t, wf.Steps, 2)
-	assert.Equal(t, "step1", wf.Steps[0].ID)
-	assert.Equal(t, "sire:local/http.request", wf.Steps[0].Tool)
-	assert.Equal(t, "https://example.com", wf.Steps[0].Params["url"])
-	assert.Nil(t, wf.Steps[0].Retry)
+	if wf.ID != "my-workflow" {
+		t.Errorf("expected ID %q, got %q", "my-workflow", wf.ID)
+	}
+	if wf.Name != "My Test Workflow" {
+		t.Errorf("expected Name %q, got %q", "My Test Workflow", wf.Name)
+	}
+	if len(wf.Steps) != 2 {
+		t.Fatalf("expected %d steps, got %d", 2, len(wf.Steps))
+	}
+	if wf.Steps[0].ID != "step1" {
+		t.Errorf("expected step1 ID %q, got %q", "step1", wf.Steps[0].ID)
+	}
+	if wf.Steps[0].Tool != "sire:local/http.request" {
+		t.Errorf("expected step1 Tool %q, got %q", "sire:local/http.request", wf.Steps[0].Tool)
+	}
+	if wf.Steps[0].Params["url"] != "https://example.com" {
+		t.Errorf("expected step1 Params url %q, got %q", "https://example.com", wf.Steps[0].Params["url"])
+	}
+	if wf.Steps[0].Retry != nil {
+		t.Errorf("expected step1 Retry to be nil, got %v", wf.Steps[0].Retry)
+	}
 
-	assert.Equal(t, "step2", wf.Steps[1].ID)
-	assert.Equal(t, "mcp:http://remote/rpc#file.write", wf.Steps[1].Tool)
-	assert.NotNil(t, wf.Steps[1].Retry)
-	assert.Equal(t, 3, wf.Steps[1].Retry.MaxAttempts)
+	if wf.Steps[1].ID != "step2" {
+		t.Errorf("expected step2 ID %q, got %q", "step2", wf.Steps[1].ID)
+	}
+	if wf.Steps[1].Tool != "mcp:http://remote/rpc#file.write" {
+		t.Errorf("expected step2 Tool %q, got %q", "mcp:http://remote/rpc#file.write", wf.Steps[1].Tool)
+	}
+	if wf.Steps[1].Retry == nil {
+		t.Errorf("expected step2 Retry to not be nil")
+	}
+	if wf.Steps[1].Retry.MaxAttempts != 3 {
+		t.Errorf("expected step2 MaxAttempts %d, got %d", 3, wf.Steps[1].Retry.MaxAttempts)
+	}
 
-	require.Len(t, wf.Edges, 1)
-	assert.Equal(t, "step1", wf.Edges[0].From)
-	assert.Equal(t, "step2", wf.Edges[0].To)
+	if len(wf.Edges) != 1 {
+		t.Fatalf("expected %d edges, got %d", 1, len(wf.Edges))
+	}
+	if wf.Edges[0].From != "step1" {
+		t.Errorf("expected edge From %q, got %q", "step1", wf.Edges[0].From)
+	}
+	if wf.Edges[0].To != "step2" {
+		t.Errorf("expected edge To %q, got %q", "step2", wf.Edges[0].To)
+	}
 }

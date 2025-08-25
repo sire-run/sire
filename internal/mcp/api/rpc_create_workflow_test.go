@@ -2,6 +2,7 @@ package api
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
@@ -10,23 +11,36 @@ import (
 	"github.com/gorilla/rpc/v2"
 	"github.com/gorilla/rpc/v2/json2"
 	"github.com/sire-run/sire/internal/core"
-	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/require"
 )
 
 func TestMCPService_ToolExecute_CreateWorkflow(t *testing.T) {
 	s := rpc.NewServer()
 	s.RegisterCodec(json2.NewCodec(), "application/json")
-	require.NoError(t, s.RegisterService(NewService(), "mcp"))
+	if err := s.RegisterService(NewService(), "mcp"); err != nil {
+		t.Fatalf("failed to register service: %v", err)
+	}
 	server := httptest.NewServer(s)
 	defer server.Close()
 
 	// Construct a valid JSON-RPC 2.0 request
-	reqBody := `{"jsonrpc":"2.0","method":"mcp.ToolExecute","params":[{"name":"sire/createWorkflow","params":[{"type":"file.write","config":{"path":"/tmp/foo.txt","content":"bar"}}]}],"id":1}`
+	reqBody := `{"jsonrpc":"2.0","method":"mcp.ToolExecute","params":[{"name":"sire/createWorkflow","params":[{"id":"step1","tool":"file.write","params":{"path":"/tmp/foo.txt","content":"bar"}}]}],"id":1}`
 
-	resp, err := http.Post(server.URL, "application/json", bytes.NewBufferString(reqBody))
-	require.NoError(t, err)
-	defer func() { require.NoError(t, resp.Body.Close()) }()
+	req, err := http.NewRequestWithContext(context.Background(), http.MethodPost, server.URL, bytes.NewBufferString(reqBody))
+	if err != nil {
+		t.Fatalf("failed to create request: %v", err)
+	}
+	req.Header.Set("Content-Type", "application/json")
+
+	client := &http.Client{}
+	resp, err := client.Do(req)
+	if err != nil {
+		t.Fatalf("failed to send request: %v", err)
+	}
+	defer func() {
+		if err := resp.Body.Close(); err != nil {
+			t.Fatalf("failed to close response body: %v", err)
+		}
+	}()
 
 	var rpcResp struct {
 		Jsonrpc string        `json:"jsonrpc"`
@@ -34,10 +48,17 @@ func TestMCPService_ToolExecute_CreateWorkflow(t *testing.T) {
 		ID      int           `json:"id"`
 	}
 
-	err = json.NewDecoder(resp.Body).Decode(&rpcResp)
-	require.NoError(t, err)
+	if err := json.NewDecoder(resp.Body).Decode(&rpcResp); err != nil {
+		t.Fatalf("failed to decode response: %v", err)
+	}
 
-	assert.Equal(t, "2.0", rpcResp.Jsonrpc)
-	assert.Equal(t, 1, rpcResp.ID)
-	assert.Equal(t, "new-workflow", rpcResp.Result.ID)
+	if rpcResp.Jsonrpc != "2.0" {
+		t.Errorf("expected jsonrpc %q, got %q", "2.0", rpcResp.Jsonrpc)
+	}
+	if rpcResp.ID != 1 {
+		t.Errorf("expected ID 1, got %d", rpcResp.ID)
+	}
+	if rpcResp.Result.ID != "generated-workflow" {
+		t.Errorf("expected workflow ID %q, got %q", "generated-workflow", rpcResp.Result.ID)
+	}
 }
