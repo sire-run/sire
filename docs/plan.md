@@ -137,7 +137,7 @@ Modern development involves a multitude of tools and services, each with its own
     *   [x] S9.2.2 The `core.Engine` must load the execution state from storage at the beginning of a run. Completion Date: 2025-08-24
     *   [x] S9.2.3 After each step completes, the engine must atomically save the full execution state (including the step's output) before dispatching the next step. Completion Date: 2025-08-24
     *   [x] S9.2.4 Add integration tests to verify that stopping and restarting the orchestrator resumes an in-flight workflow. Completion Date: 2025-08-24
-*   [x] T9.5 Run linter and formatter  Owner: Gemini  Est: 30m Completion Date: 2025-08-24
+*   [x] T9.3 Implement retry and resumption logic  Owner: Gemini  Est: 5h Completion Date: 2025-08-24
     *   [x] S9.3.1 When a tool call fails with a transient error, the engine marks the step as `retrying` in the database. Completion Date: 2025-08-24
     *   [x] S9.3.2 Implement a background worker process that periodically scans the database for pending or retrying executions. Completion Date: 2025-08-24
     *   [x] S9.3.3 The background worker re-queues these executions for the engine to process. Completion Date: 2025-08-24
@@ -146,6 +146,7 @@ Modern development involves a multitude of tools and services, each with its own
 *   [x] T9.4 Update CLI and documentation  Owner: Gemini  Est: 2h Completion Date: 2025-08-24
     *   [x] S9.4.1 Add new CLI commands: `sire execution list` and `sire execution status <id>`. Completion Date: 2025-08-24
     *   [x] S9.4.2 Update documentation to explain the durability guarantees and how to configure retry policies. Completion Date: 2025-08-24
+*   [x] T9.5 Run linter and formatter  Owner: Gemini  Est: 30m Completion Date: 2025-08-24
 
 ### Future Roadmap: Post-Launch Epics
 
@@ -168,6 +169,7 @@ The following epics represent the next phase of development after the core MCP p
 
 *   [ ] **T12.1: Develop Workflow SDKs:** Create SDKs (e.g., in Go or Python) for defining workflows programmatically.
 *   [ ] **T12.2: Implement Interactive CLI Debugger:** Add a `--debug` mode to the CLI for stepping through workflows.
+
 *   [ ] **T12.3: Add Mocking and Dry-Run Capabilities:** Implement `--dry-run` and `--mock-file` flags.
 
 ### E13: Comprehensive Security Model
